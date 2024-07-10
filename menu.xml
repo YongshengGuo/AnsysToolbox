@@ -1,0 +1,39 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Menu>
+	<SubMenu Name="Export" DesignType="3DLayout">
+		<SubMenu Type="MenuItem" Name="ExportToHfssWithNets" ExecuteType="Python" Path="$UserLib/3DLayout/export/export2HfssWithNets.py" Arguments ="" PythonPath="" entryFunction="main"></SubMenu>
+	</SubMenu>
+	<SubMenu Name="Stackup" DesignType="3DLayout">
+		<SubMenu Type="MenuItem" Name="ImportCSVStackup" ExecuteType="Python" Path="$UserLib/3DLayout/Stackup/importCSVStackup.py" Arguments ="" PythonPath="" entryFunction="main"></SubMenu>
+	</SubMenu>
+	<SubMenu Name="Net" DesignType="3DLayout">
+		<SubMenu Type="MenuItem" Name="AutoXNet" ExecuteType="Python" Path="$UserLib/3DLayout/Net/autoRLCNet.py" Arguments ="" PythonPath=""></SubMenu>
+	</SubMenu>
+	<SubMenu Name="Component" DesignType="3DLayout">
+		<SubMenu Type="MenuItem" Name="deleteInvalidRLC" ExecuteType="Python" Path="$UserLib/3DLayout/component/deleteInvalidRLC.py" Arguments ="" PythonPath=""></SubMenu>
+	</SubMenu>
+	<SubMenu Name="Via" DesignType="3DLayout">
+		<SubMenu Type="MenuItem" Name="autoBackdrill" ExecuteType="IronPython" Path="$UserLib/3DLayout/Via/autoBackdrill.py" Arguments ="" PythonPath=""></SubMenu>
+	</SubMenu>
+	<SubMenu Name="Port" DesignType="3DLayout">
+		<SubMenu Type="MenuItem" Name="RenameEdgePort" ExecuteType="Python" Path="$UserLib/3DLayout/Port/nameEdgePort.py" Arguments ="" PythonPath=""></SubMenu>
+	</SubMenu>
+	<SubMenu Type="Separator"/>
+	<SubMenu Name="Close">
+		<SubMenu Type="MenuItem" Name="QuitAedt" ExecuteType="Python" Path="$UserLib/Desktop/Close.py" EntryFunc="ForceQuitAedt"></SubMenu>
+		<SubMenu Type="MenuItem" Name="CloseProjectAndSave" ExecuteType="Python" Path="$UserLib/Desktop/Close.py" EntryFunc="closeAndSave"></SubMenu>
+		<SubMenu Type="MenuItem" Name="CloseProjectNotSave" ExecuteType="Python" Path="$UserLib/Desktop/Close.py" EntryFunc="closeNotSave"></SubMenu>
+		<SubMenu Type="MenuItem" Name="CloseAllProjectWithSave" ExecuteType="Python" Path="$UserLib/Desktop/Close.py" EntryFunc="closeAllProjectWithSave"></SubMenu>
+		<SubMenu Type="MenuItem" Name="CloseAllProjectWithoutSave" ExecuteType="Python" Path="$UserLib/Desktop/Close.py" EntryFunc="closeAllProjectWithoutSave"></SubMenu>
+		<SubMenu Type="MenuItem" Name="ReloadProject" ExecuteType="IronPython" Path="$UserLib/Desktop/Close.py" EntryFunc="Reload"></SubMenu>
+	</SubMenu>
+	<SubMenu Type="Separator"/>
+	<SubMenu Type="MenuItem" Name="OpenToolboxDir" ExecuteType="Python" Path="$UserLib/Desktop/OpenToolboxDir.py" ></SubMenu>
+	<SubMenu Type="MenuItem" Name="KeepOnTop" ExecuteType="Command" Checked="True"></SubMenu>
+	<SubMenu Name="test">
+		<SubMenu Type="MenuItem" Name="showProjectName_python" ExecuteType="Python" Path="$UserLib/Template/showProjectName.py" Arguments ="" PythonPath=""></SubMenu>
+		<SubMenu Type="MenuItem" Name="showProjectName_Ironpython" ExecuteType="IronPython" Path="$UserLib/Template/showProjectName.py" Arguments ="" EntryFunc="main" PythonPath=""></SubMenu>
+		<SubMenu Type="MenuItem" Name="ShowSysArgs" ExecuteType="Python" Path="$UserLib/Template/showSysArgs.py" Arguments ="testArg1 testArg2" PythonPath=""></SubMenu>
+	</SubMenu>
+	<SubMenu Type="MenuItem" Name="Exit" ExecuteType="Command"></SubMenu>
+</Menu>
