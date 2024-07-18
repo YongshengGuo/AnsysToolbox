@@ -7,6 +7,7 @@ from ..common.arrayStruct import ArrayStruct
 from ..common.complexDict import ComplexDict
 from ..common.unit import Unit
 from ..common.common import log,tuple2list
+from .definition import Definitions,Definition
 
 import math
 
@@ -134,17 +135,33 @@ class Material(object):
             #conductivity is expression
             log.debug("float(conductivity) error:%s"%self.conductivity)
         
-        try:
-            dk = float(self.permittivity)
-            if dk>1.05:
-                return False
-            else:
-                return True
-        except:
-            #if dk and conductivity are expression
-            return False
+        #1e-12+2.84472e-12*Freq*(atan(Freq/70403)-atan(Freq/1.59155e+11))
+        if "Freq" in self.conductivity:
+            from math import atan,log,log10
+            Freq = 1
+            
+            try:
+                conductivity = eval(self.conductivity)
+                if float(conductivity) < 10000:
+                    return False
+                else:
+                    return True
+            except:
+                #conductivity is expression
+                log.debug("float(conductivity) error:%s"%self.conductivity)
         
-
+        
+#         try:
+#             dk = float(self.permittivity)
+#             if dk>1.05:
+#                 return False
+#             else:
+#                 return True
+#         except:
+#             #if dk and conductivity are expression
+#             return False
+        
+        return False
 
     
 class Materials(object):

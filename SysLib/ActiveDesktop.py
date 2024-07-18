@@ -13,7 +13,7 @@ try:
     import clr
 except:
     if not isIronpython:
-        print("Note: for Python environment Pyaedt must install, use command: pip install pyaedt.")
+        print("Note: for Python environment Pyaedt must install, use command: pip install pyaedt")
     exit()
 
 try:

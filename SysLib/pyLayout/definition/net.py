@@ -367,7 +367,7 @@ class Nets(object):
 #             compNames = self.__class__(net).CompNames
             compNames = self.NetDict[net].getConnectedComponnets()
             if ignorRLC:
-                compNames = [c for c in compNames if self.layout.Components[c].Type not in ["Resistor","Inductor","Capacitor"]]
+                compNames = [c for c in compNames if self.layout.Components[c].PartType not in ["Resistor","Inductor","Capacitor"]]
             temp += compNames
             
         return list(set(temp))

@@ -346,7 +346,9 @@ class Component(Primitive):
         
 
     def createPortOnNets(self,nets):
-        
+        '''
+        create port on each pin of nets.
+        '''
         if isinstance(nets, str):
             nets = [nets]
             

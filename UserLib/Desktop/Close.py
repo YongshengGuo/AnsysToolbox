@@ -17,16 +17,19 @@ else:
 def closeAndSave():
     oProject = oDesktop.GetActiveProject()
     oProject.Save()
+    print("Close project with Save: %s......"%oProject.GetName())
     oProject.Close() 
     
 def closeNotSave():
     oProject = oDesktop.GetActiveProject()
     # oProject.Save()
+    print("Close project  without Save: %s......"%oProject.GetName())
     oProject.Close() #Unsaved changes will be lost.
 
 def closeAllProjectWithSave():
     projects = oDesktop.GetProjects()
     for oProject in projects:
+        print("Close project with Save: %s......."%oProject.GetName())
         oProject.Save()
         oProject.Close()
         
@@ -34,6 +37,7 @@ def closeAllProjectWithoutSave():
     projects = oDesktop.GetProjects()
     for oProject in projects:
         # oProject.Save()
+        print("Close project without Save: %s......"%oProject.GetName())
         oProject.Close() #Unsaved changes will be lost.
 
 def ForceQuitAedt():

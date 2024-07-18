@@ -20,14 +20,13 @@ from ..common.arrayStruct import ArrayStruct
 from ..common.complexDict import ComplexDict
 from ..common.unit import Unit
 from ..common.common import log,tuple2list
+from .definition import Definitions,Definition
 
-
-class Sweep(object):
+class Sweep(Definition):
     
     '''
     hfss3DLParameters.hfssSweep
     '''
-    
     mapsForHFSS = {
         "SweepData":"Sweeps/Data",
         "UseQ3D":"UseQ3DForDC",
@@ -50,149 +49,97 @@ class Sweep(object):
         }
     
     
-    layoutTemp = None
     def __init__(self,sweepName = None,setupName=None,layout=None):
-        self.name = sweepName
-        self.setupName = setupName
+        super(self.__class__,self).__init__(sweepName,type="Sweep",layout=layout)
+        self._info.update("sweepName",sweepName)
+        self._info.update("setupName",setupName)
         
-        if setupName == None:
-            #sweepName must be full Name,like: SweepName:SetupName
-            setup_sweep = sweepName.split(",")
-            if len(setup_sweep) != 2:
-                log.exception("if setupName not give,sweepName must be FullName as: 'setupName:Sweep'.")
-            
-            self.setupName,self.name = setup_sweep
-        
-        if layout:
-            self.__class__.layoutTemp = layout
-            self.layout = layout
-        else:
-            self.layout = self.__class__.layoutTemp
-        
-        self._oModule = None
-        self._array = None
-        self.maps = {}
-
-    def __getitem__(self, key):
-        return self.Info[key]
-    
-    def __setitem__(self, key,value):
-        self.Info[key] = value
-        self.oModule.EditSweep(self.setupName,self.name,self.Info.Array)
-#         self.oModule.Edit(self.name,self.Info.Array)
-        self._array = None
-        
-    def __getattr__(self,key):
-
-        if key in ["layout","name","setupName","_array","_oModule","maps"]:
-            return object.__getattr__(self,key)
-        else:
-            log.debug("__getattr__ from _dict: %s"%key)
-            return self[key]
-
-         
-    def __setattr__(self, key, value):
-        if key in ["layout","name","setupName","_array","_oModule","maps"]:
-            object.__setattr__(self,key,value)
-        else:
-            self[key] = value
-        
-    def __repr__(self):
-        return "Sweep Object: %s"%self.Name
-
-    def __dir__(self):
-        return list(dir(self.__class__)) + list(self.__dict__.keys()) + list(self.Props)
-    
     @property
-    def Props(self):
-        propKeys = list(self.Info.Keys)
-        
-        if self.maps:
-            propKeys += list(self.maps.keys())
-             
-        return propKeys
-
-
-    @property
-    def Name(self):
-        return self.name
-    
-    @property
-    def FullName(self):
-        return "%s:%s"%(self.setupName,self.name)
+    def SolutionName(self):
+        return "%s:%s"%(self.Info.setupName,self.Info.sweepName)
     
     @property
     def oModule(self):
-        if not self._oModule:
-            self._oModule = self.layout.oDesign.GetModule("SolveSetups")
-        return self._oModule
+        return self.oDesign.GetModule("SolveSetups")
+
     
     @property
-    def Info(self):
-        if self._array == None:
-            self.parse()
-        return self._array
+    def oManager(self):
+        return self.oModule
+
     
-    
-    def parse(self):
-        SolveSetupType =  self.layout.Setups[self.setupName].SolveSetupType 
+    def parse(self,force = False):
+        '''
+        mapping key must not have same value with maped key.
+        '''
         
-        self.maps = {}
+        if self.parsed and not force:
+            return
+        
+        log.debug("parse primitive: %s"%self.name)
+        SolveSetupType =  self.layout.Setups[self._info.setupName].SolveSetupType 
+        
+        maps = {}
         if SolveSetupType== "HFSS":
-            self.maps = self.mapsForHFSS
+            maps = self.mapsForHFSS
         elif SolveSetupType== "SIwave":
-            self.maps = self.mapsForSIwave
+            maps = self.mapsForSIwave
         else:
-            log.error("Unknow setup type:%s"%self.setupName)
+            log.error("Unknow setup type:%s"%self._info.setupName)
  
-        self._array = ArrayStruct(tuple2list(self.oModule.GetSweepInfo(self.setupName,self.name)),maps=self.maps)
-#         self._array = ArrayStruct(self.oModule.GetSweepInfo(self.setupName,self.name),maps=self.maps)
+        datas = self.oModule.GetSweepInfo(self._info.setupName,self._info.sweepName)
+        if datas:
+            _array = ArrayStruct(tuple2list(datas),maps)
+        else:
+            _array = []
+            
+        self._info.update("Name",self.name)
+        self._info.update("Array", _array)
+        self.__class__.maps = maps
+            
+        self.parsed = True
+
+
+    def update(self):
+#         self.oManager.EditSweep(self.setupName,self.Array.Datas)
+        self.oModule.EditSweep(self.setupName,self.sweepName,self.Array.Datas)
+        self.parse()
 
     def delete(self):
-        self.oModule.DeleteSweep(self.setupName,self.name)
+        self.oModule.DeleteSweep(self.Info.setupName,self.Info.sweepName)
     
-#     def getData(self,path = None):
-#         datas = ArrayStruct(self.oModule.GetSweepInfo(self.setupName,self.name))
-#         if not path:
-#             return datas
-#         
-#         return datas.get(path)
-#     
-#     def setData(self,path=None,value=None,arrayDatas = None):
-#         if arrayDatas:
-#             self.oModule.EditSweep(self.setupName,self.name,arrayDatas)
-#             return
-#         datas = ArrayStruct(self.oModule.GetSweepInfo(self.setupName,self.name))
-#         datas.set(path,value)
-#         self.oModule.EditSweep(self.setupName,self.name,datas.Array)
     
     def analyze(self):
-        self.oModule.AnalyzeSweep(self.setupName,self.name)
+        self.oModule.AnalyzeSweep(self.Info.setupName,self.Info.sweepName)
     
-    @classmethod
-    def getByName(cls,SetupName,sweepName):
-        sweepNames = Setup.getByName(SetupName).getSweepNames()
-        
-        for name in sweepNames:
-            if sweepName.lower() == name.lower():
-                return cls(sweepName)
-            
-        raise Exception("Sweep '%s' not in setupName '%s'"%(sweepName,SetupName))
 
-    @classmethod
-    def getByFullName(cls,fullName):
-        '''
-        Full Name: setupName:Sweep
-        '''
-        
-        setup_sweep = fullName.split(",")
-        if len(setup_sweep) != 2:
-            raise Exception("FullName must give by 'setupName:Sweep'.")
-        
-        return cls.getByName(*setup_sweep)
+class Sweeps(Definitions):
+ 
+    def __init__(self,layout=None,setupName = None):
+        super(self.__class__,self).__init__(layout, type="Sweep",definitionCalss=Sweep)
+        self.setupName = setupName
+     
+    @property
+    def oModule(self):
+        return self.layout.oDesign.GetModule("SolveSetups")
 
-class Setup(object):
-    layoutTemp = None
+     
+    @property
+    def DefinitionDict(self):
+        if self._definitionDict is None:
+            self._definitionDict = ComplexDict(dict([(name,Sweep(name,self.setupName,layout=self.layout)) for name in self.oModule.GetSweeps(self.setupName)]))
+#             self._definitionDict.setMaps(dict([(re.sub(r'[-\.\s]','_',pin),pin) for pin in self._definitionDict.Keys]))
+        return self._definitionDict
+
+    def _getSweeps(self):
+#         sweepDict = {}
+#         for name in self.oModule.GetSweeps(self.setupName):
+#             sweepDict[name] = Sweep(name,self.setupName,layout=self.layout)
+        
+        return ComplexDict(dict([(name,Sweep(name,self.setupName,layout=self.layout)) for name in self.oModule.GetSweeps(self.setupName)]))
+
+class Setup(Definition):
+
     maps = {
         "AdaptiveFrequency":"AdaptiveSettings/SingleFrequencyDataList/AdaptiveFrequencyData/AdaptiveFrequency",
         "DeltaS": "AdaptiveSettings/SingleFrequencyDataList/AdaptiveFrequencyData/MaxDelta",
@@ -205,88 +152,17 @@ class Setup(object):
     
     def __init__(self,name = None,layout=None):
         
-        self.name = name
-        if layout:
-            self.__class__.layoutTemp = layout
-            self.layout = layout
-            Sweep.layoutTemp = layout
-        else:
-            self.layout = self.__class__.layoutTemp
-            
-        self._oModule = None
-        self._array = None
-    
-    def __getitem__(self, key):
-        
-        if key.lower() == "sweeps":
-            sweepNames = self.oModule.GetSweeps(self.name)
-            if len(sweepNames):
-                return ComplexDict(dict([(sweepName,Sweep(sweepName,self.name,layout=self.layout)) for sweepName in sweepNames]))
-            else:
-                log.info("Not sweeps in setup: %s"%self.name)
-                return []
-        
-        return self.Info[key]
-    
-    def __setitem__(self, key,value):
-        self.Info[key] = value
-        self.oModule.Edit(self.name,self.Info.Array)
-        self._array = None
-        
-    def __getattr__(self,key):
+        super(self.__class__,self).__init__(name,type="Setup",layout=layout)
 
-        if key in ["layout","name","_array","_oModule"]:
-            object.__getattribute__(self,key)
-        else:
-            log.debug("Layer __getattribute__ from _info: %s"%str(key))
-            return self[key]
-
-         
-    def __setattr__(self, key, value):
-        if key in ["layout","name","_array","_oModule"]:
-            object.__setattr__(self,key,value)
-        else:
-            self[key] = value
-        
-    def __repr__(self):
-        return "Setup Object: %s"%self.Name
     
-    
-    def __dir__(self):
-        return list(dir(self.__class__)) + list(self.__dict__.keys()) + list(self.Props)
-    
-    @property
-    def Props(self):
-        propKeys = list(self.Info.Keys)
-        propKeys.append("sweeps")
-        if self.maps:
-            propKeys += list(self.maps.keys())
-             
-        return propKeys
-    
-    @property
-    def oProject(self):
-        return self.layout.oProject
-    
-    @property
-    def oDesign(self):
-        return self.layout.oDesign
-
-    @property
-    def oEditor(self):
-        return self.layout.oEditor
-
     @property
     def oModule(self):
-        if not self._oModule:
-            self._oModule = self.oDesign.GetModule("SolveSetups")
-        return self._oModule
+        return self.oDesign.GetModule("SolveSetups")
+
     
     @property
-    def Info(self):
-        if self._array == None:
-            self.parse()
-        return self._array
+    def oManager(self):
+        return self.oModule
     
     @property
     def Name(self):
@@ -303,22 +179,48 @@ class Setup(object):
 #     def setData(self,path=None,value=None,arrayDatas = None):
 #         if arrayDatas: #arrayDatas has High priority
 #             self.oModule.Edit(self.name,arrayDatas)
-#             self._array = None
+#             self._info = None
 #             return None
 #         
 #         datas = self.Info # ArrayStruct(self.oModule.GetSetupData(self.name))
 #         datas.set(path,value)
 #         self.oModule.Edit(self.name,datas.Array)
 #         #update Info
-#         self._array = None
+#         self._info = None
     
-    def delSetup(self):
-        self.oModule
-    
-    def parse(self):
-        self._array = ArrayStruct(tuple2list(self.oModule.GetSetupData(self.name)),maps=self.maps)
+    def parse(self,force = False):
+        '''
+        mapping key must not have same value with maped key.
+        '''
+        
+        if self.parsed and not force:
+            return
+        
+        log.debug("parse primitive: %s"%self.name)
+        self._info = ComplexDict()
         
     
+        datas = self.oModule.GetSetupData(self.name)
+        if datas:
+            _array = ArrayStruct(tuple2list(datas),self.maps)
+        else:
+            _array = []
+            
+            
+        self._info.update("Array", _array)
+        
+        self._info.update("Name",self.name)
+        maps = {}
+        maps.update({"Sweeps":{
+            "Key":"Name",
+            "Get":lambda k: Sweeps(layout=self.layout,setupName=self.name) #[Sweep(k,sweepName) for sweepName in self.oModule.GetSweeps(self.name)]
+            }})
+        
+        self._info.setMaps(maps)
+            
+        self.parsed = True
+
+
     #--- Sweep
     def findSweep(self,sweepName):
         for swp in self.getSweepNames():
@@ -428,6 +330,7 @@ class Setup(object):
         hfss.openAedt(path)
         unit = hfss.getUnit()
         netInfo = {}
+        log.info("Get net information ... ")
         for obj in hfss.Objects:
             #skip sheet objects
             if "Material" not in obj:
@@ -514,44 +417,25 @@ class Setup(object):
 # 
 
         
-class Setups(object):
+class Setups(Definitions):
 
     def __init__(self,layout=None):
-        
-        self.layout = layout
-        
-            
-        self._oModule = None
-        self.setupDict = None
-    
-    def __getitem__(self, key):
-        return self.SetupDict[key]
-    
-    def __contains__(self,key):
-        return key in self.SetupDict
-    
-    def __len__(self):
-        return len(self.SetupDict)
+        super(self.__class__,self).__init__(layout, type="Setup",definitionCalss=Setup)
     
     @property
     def oModule(self):
-        if not self._oModule:
-            self._oModule = self.layout.oDesign.GetModule("SolveSetups")
-        return self._oModule
+        if not self._manager:
+            self._manager = self.layout.oDesign.GetModule("SolveSetups")
+        return self._manager
     
     @property
-    def SetupDict(self):
-        if self.setupDict is None:
-            self.setupDict = ComplexDict(dict([(name,Setup(name,layout=self.layout)) for name in self.getAllSetupNames()]))
-            self.setupDict.setMaps(dict([(re.sub(r'[-\.\s]','_',pin),pin) for pin in self.setupDict.Keys]))
-        return self.setupDict
+    def DefinitionDict(self):
+        if self._definitionDict is None:
+            oModule = self.layout.oDesign.GetModule("SolveSetups")
+            self._definitionDict = ComplexDict(dict([(name,Setup(name,layout=self.layout)) for name in oModule.GetSetups()]))
+#             self._definitionDict.setMaps(dict([(re.sub(r'[-\.\s]','_',pin),pin) for pin in self._definitionDict.Keys]))
+        return self._definitionDict
     
-    @property
-    def All(self):
-        return self.SetupDict
-    
-    def refresh(self):
-        self.setupDict = None
     
     def add(self,name,solutionType = "HFSS"):
         if name in self.getAllSetupNames():
@@ -566,9 +450,9 @@ class Setups(object):
             oModule = self.layout.oDesign.GetModule("SolveSetups")
             oModule.Add(["NAME:%s"%name,"SolveSetupType:=", solutionType])
         
-        #refresh setupDict
-        self.setupDict = None
-        return self.SetupDict[name]
+        #refresh _definitionDict
+        self._definitionDict = None
+        return self.DefinitionDict[name]
     
 
     def getByName(self,name):
@@ -576,10 +460,6 @@ class Setups(object):
             return Setup(name)
         else:
             log.exception('setupName "%s" not exist'%name)
-    
-    def getAllSetups(self):
-        return self.SetupDict.Values
-#         return [Setup(name) for name in self.getAllSetupNames()]
     
     def getAllSetupNames(self):
         oModule = self.layout.oDesign.GetModule("SolveSetups")

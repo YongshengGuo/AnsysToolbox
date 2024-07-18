@@ -329,12 +329,16 @@ class ArrayStruct(object):
         return self._datas 
     
     @property
-    def Values(self):
-        '''
-        Returns:
-            dict: the options in dict format
-        '''
-        return self._datas
+    def Datas(self):
+        return self._datas 
+    
+#     @property
+#     def Values(self):
+#         '''
+#         Returns:
+#             dict: the options in dict format
+#         '''
+#         return self._datas
     
     def get(self,path):
         '''

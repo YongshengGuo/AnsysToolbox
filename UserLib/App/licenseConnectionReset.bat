@@ -1,0 +1,9 @@
+@echo off
+chcp 65001
+echo 仅适用于由于VPN连接断开导致本地license无法访问的问题.
+echo 运行过程中您的网络会被断开和重置.
+ipconfig /release
+ipconfig /renew
+ipconfig /registerdns
+echo ------------------------------
+echo 网络重置完成，请关闭窗口

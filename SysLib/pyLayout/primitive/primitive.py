@@ -359,6 +359,19 @@ class Primitives(object):
         return "%s Objects collection"%(self.type)
     
     @property
+    def oProject(self):
+        return self.layout.oProject
+    
+    @property
+    def oDesign(self):
+        return self.layout.oDesign
+
+    @property
+    def oEditor(self):
+        return self.layout.oEditor
+    
+    
+    @property
     def ObjectDict(self):
         '''
         FindObjects
@@ -377,6 +390,10 @@ class Primitives(object):
     @property
     def All(self):
         return self.ObjectDict.Values
+    
+    @property
+    def Count(self):
+        return len(self)
     
     @property
     def Type(self):
@@ -430,6 +447,7 @@ class Primitives(object):
         
         log.info("not found component: %s"%name)
         return None
+    
     def getUniqueName(self,prefix=""):
         
         if prefix == None:
