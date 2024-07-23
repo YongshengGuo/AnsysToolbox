@@ -3,8 +3,10 @@
 	<SubMenu Name="Export" DesignType="3DLayout">
 		<SubMenu Type="MenuItem" Name="ExportToHfssWithNets" ExecuteType="Python" Path="$UserLib/3DLayout/export/export2HfssWithNets.py" Arguments ="" PythonPath="" entryFunction="main"></SubMenu>
 	</SubMenu>
+	
 	<SubMenu Name="Stackup" DesignType="3DLayout">
 		<SubMenu Type="MenuItem" Name="ImportCSVStackup" ExecuteType="Python" Path="$UserLib/3DLayout/Stackup/importCSVStackup.py" Arguments ="" PythonPath="" entryFunction="main"></SubMenu>
+		<SubMenu Type="MenuItem" Name="ExportCSVStackup" ExecuteType="Python" Path="$UserLib/3DLayout/Stackup/exportCSVStackup.py" Arguments ="" PythonPath="" entryFunction="main"></SubMenu>
 	</SubMenu>
 	<SubMenu Name="Net" DesignType="3DLayout">
 		<SubMenu Type="MenuItem" Name="AutoXNet" ExecuteType="Python" Path="$UserLib/3DLayout/Net/autoRLCNet.py" Arguments ="" PythonPath=""></SubMenu>
@@ -27,6 +29,10 @@
 		<SubMenu Type="MenuItem" Name="CloseAllProjectWithoutSave" ExecuteType="Python" Path="$UserLib/Desktop/Close.py" EntryFunc="closeAllProjectWithoutSave"></SubMenu>
 		<SubMenu Type="MenuItem" Name="ReloadProject" ExecuteType="IronPython" Path="$UserLib/Desktop/Close.py" EntryFunc="Reload"></SubMenu>
 	</SubMenu>
+	<SubMenu Name="License">
+		<SubMenu Type="MenuItem" Name="licenseConnectionReset(VPN)" ExecuteType="EXE" Path="$UserLib/App/licenseConnectionReset.bat"></SubMenu>
+	</SubMenu>
+
 	<SubMenu Type="Separator"/>
 	<SubMenu Type="MenuItem" Name="OpenToolboxDir" ExecuteType="Python" Path="$UserLib/Desktop/OpenToolboxDir.py" ></SubMenu>
 	<SubMenu Type="MenuItem" Name="KeepOnTop" ExecuteType="Command" Checked="True"></SubMenu>

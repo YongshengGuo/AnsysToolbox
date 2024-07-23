@@ -119,7 +119,7 @@ class Log(object):
 #         self.aedtMessage(content)
 
     def info(self,content,*args):
-        self.logger.info(content+",".join(args))
+        self.logger.info(content+",".join(list(args)))
 #         self.aedtMessage(content+",".join(args))
            
     def warning(self,content,*args):

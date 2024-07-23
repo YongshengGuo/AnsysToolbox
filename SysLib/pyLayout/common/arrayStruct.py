@@ -167,7 +167,7 @@ class ArrayStruct(object):
     classdocs
     '''
 
-    def __init__(self, datas, maps = None):
+    def __init__(self, datas = [], maps = None):
         '''
         Constructor
         '''
@@ -269,12 +269,27 @@ class ArrayStruct(object):
         self.delKey(key)
         
     def __contains__(self,key):
+        
+        if self.maps and key in self.maps:
+            return True
+        
+        if key in self.Keys:
+            return True
+        
         try:
             self[key]
+            return True
         except:
             return False
         
-        return True
+        log.exception("Contains Error with key: %s"%key)
+        
+#         try:
+#             self[key]
+#         except:
+#             return False
+#         
+#         return True
             
     def __getattr__(self,key):
         try:
@@ -293,7 +308,7 @@ class ArrayStruct(object):
             self[key] = value
             
     def __dir__(self):
-        return dir(self.__class__) + self.__dict__.keys() + self.Keys
+        return dir(self.__class__) + list(self.__dict__.keys()) + self.Keys
         
     def __len__(self):
         return len(self.Array)
@@ -332,13 +347,11 @@ class ArrayStruct(object):
     def Datas(self):
         return self._datas 
     
-#     @property
-#     def Values(self):
-#         '''
-#         Returns:
-#             dict: the options in dict format
-#         '''
-#         return self._datas
+    
+    @Datas.setter
+    def Datas(self):
+        return self._datas 
+
     
     def get(self,path):
         '''

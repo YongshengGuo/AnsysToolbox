@@ -21,6 +21,7 @@ from ..common.complexDict import ComplexDict
 from ..common.unit import Unit
 from ..common.common import log,tuple2list
 from .definition import Definitions,Definition
+from ..common.common import log
 
 class Sweep(Definition):
     
@@ -95,7 +96,7 @@ class Sweep(Definition):
             
         self._info.update("Name",self.name)
         self._info.update("Array", _array)
-        self.__class__.maps = maps
+#         self.__class__.maps = maps
             
         self.parsed = True
 

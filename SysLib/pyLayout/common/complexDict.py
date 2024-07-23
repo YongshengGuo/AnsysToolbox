@@ -302,15 +302,17 @@ class ComplexDict(object):
         if self.maps and key in self.maps:
             return True
         
+        if key in self._dict:
+            return True
+        
         try:
             self.get(key)
+            return True
         except:
             return False
-        return True
-#         rst = self.get(key, default = "//key_not_found//")
-#         return not rst == "//key_not_found//"
-    
-    
+        
+        log.exception("Contains Error with key: %s"%key)
+
         
     def __delitem__(self,key):
         self.delKey(key)
@@ -416,7 +418,6 @@ class ComplexDict(object):
                 val = self.get(key,default= "//key_not_found//") #val is dict or value
             except:
                 log.warning("key:%s not found in layer: %s"%(key,self.Name))
-                return
                 
             if val == "//key_not_found//": #not found
                 if isinstance(options[key], (dict,ComplexDict)):

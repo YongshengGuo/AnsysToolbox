@@ -60,6 +60,13 @@ class Definition(object):
         """
         self.parse()
         
+        #for multi-level key
+        keyList = re.split(r"[\\/]", key,maxsplit = 1)
+        keyList = list(filter(lambda k:k.strip(),keyList)) #filter empty key
+        if len(keyList)>1:
+            return self[keyList[0]][keyList[1]]
+        
+        
         if key in self._info.Array:
             return self._info.Array[key] 
         
@@ -67,11 +74,18 @@ class Definition(object):
             return self._info[key] 
 
         else:
-            log.exception("key error for padstack: %s"%key)       
+            log.exception("key error for %s: %s"%(self.type,key))       
         
 
     def __setitem__(self, key,value):
         self.parse()
+        
+        #for multi-level key
+        keyList = re.split(r"[\\/]", key,maxsplit = 1)
+        keyList = list(filter(lambda k:k.strip(),keyList)) #filter empty key
+        if len(keyList)>1:
+            self[keyList[0]][keyList[1]] = value
+
         if key in self._info.Array:
             self._info.Array[key] = value
             self.update()
@@ -80,19 +94,19 @@ class Definition(object):
             self._info[key] = value
 
         else:
-            log.exception("key error for Setups: %s"%key)   
+            log.exception("key error for %S: %s"%(self.type,key))       
         
 
     def __getattr__(self,key):
 
-        if key in ["layout","name","_info","parsed","type"]:
+        if key in ["layout","name","_info","parsed","type","maps"]:
             return object.__getattr__(self,key)
         else:
             log.debug("__getattr__ from _dict: %s"%key)
             return self[key]
 
     def __setattr__(self, key, value):
-        if key in ["layout","name","_info","parsed","type"]:
+        if key in ["layout","name","_info","parsed","type","maps"]:
             object.__setattr__(self,key,value)
         else:
             self[key] = value
@@ -120,8 +134,14 @@ class Definition(object):
     def Props(self):
         propKeys = list(self.Info.Keys) + list(self.Array.Keys)
         
-        if self.maps:
-            propKeys += self.maps.keys()
+        if self.Info.maps:
+            propKeys += self.Info.maps.keys()
+            
+        try:
+            propKeys +=  self.Info.Array.Keys
+            propKeys +=  self.Info.Array.maps.keys()
+        except:
+            pass
              
         return propKeys
 
@@ -131,7 +151,7 @@ class Definition(object):
     
     @property
     def oManager(self):
-        return self.oDefinitionManager.GetManager(self.self.type)
+        return self.oDefinitionManager.GetManager(self.type)
         
     @property
     def Info(self):
@@ -153,18 +173,19 @@ class Definition(object):
         if self.parsed and not force:
             return
         
-        log.debug("parse primitive: %s"%self.name)
-        maps = self.maps
-    
+        log.debug("parse definition: %s"%self.name)
+        maps = self.maps.copy()
         datas = self.oManager.GetData(self.name)
         if datas:
             _array = ArrayStruct(tuple2list(datas),maps)
         else:
-            _array = []
-            
+            _array = ArrayStruct([])
+        
+#         self._info.update("self", self)    
         self._info.update("Name",self.name)
         self._info.update("Array", _array)
-            
+        
+        self.maps = maps
         self.parsed = True
     
     
@@ -191,19 +212,28 @@ class Definitions(object):
             return self.DefinitionDict[key]
         
         if isinstance(key, str):
+            
+#             #for multi-level key
+#             keyList = re.split(r"[\\/]", key,maxsplit = 1)
+#             keyList = list(filter(lambda k:k.strip(),keyList)) #filter empty key
+#             if len(keyList)>1:
+#                 return self[keyList[0]][keyList[1]]
+            
             if key in self.DefinitionDict:
                 return self.DefinitionDict[key]
             else:
                 #find by 正则表达式
                 lst = [name for name in self.DefinitionDict.Keys if re.match(r"^%s$"%key,name,re.I)]
                 if not lst:
-                    raise Exception("not found component: %s"%key)
+                    raise Exception("not found %s: %s"%(self.type,key))
                 else:
                     #如果找到多个器件（正则表达式），返回列表
                     return self[lst]
 
         if isinstance(key, (list,tuple,Iterable)):
             return [self[i] for i in list(key)]
+        
+        raise Exception("not found %s: %s"%(self.type,key))
         
             
     def __getattr__(self,key):
@@ -214,7 +244,7 @@ class Definitions(object):
         try:
             return super(self.__class__,self).__getattribute__(key)
         except:
-            log.debug("%s  __getattribute__ from _info: %s"%str(self.__class__.__name__,key))
+            log.debug("%s  __getattribute__ from _info: %s"%(self.__class__.__name__,key))
             return self[key]
             
     def __contains__(self,key):
@@ -236,9 +266,9 @@ class Definitions(object):
     def DefinitionDict(self):
         if self._definitionDict == None:
             oDefinitionManager = self.layout.oProject.GetDefinitionManager()
-            oPadstackManager = oDefinitionManager.GetManager(self.type)
-            self._definitionDict  = ComplexDict(dict([(name,self.definitionCalss(name,layout=self.layout)) for name in oPadstackManager.GetNames()]))
-        return self._definitionDict 
+            oManager = oDefinitionManager.GetManager(self.type)
+            self._definitionDict  = ComplexDict(dict([(name,self.definitionCalss(name,layout=self.layout)) for name in oManager.GetNames()]))
+        return self._definitionDict
     
     @property
     def All(self):
@@ -263,7 +293,7 @@ class Definitions(object):
         self._definitionDict  = None
         
     def push(self,name):
-        self.DefinitionDict.update(name,self.primitiveClass(name,layout=self.layout))
+        self.DefinitionDict.update(name,self.definitionCalss(name,layout=self.layout))
     
     def pop(self,name):
         del self.DefinitionDict[name]
@@ -282,7 +312,7 @@ class Definitions(object):
         if name in self.DefinitionDict:
             return self.DefinitionDict[name]
         
-        log.info("not found component: %s"%name)
+        log.info("not found %s: %s"%(self.type,name))
         return None
     
     def getUniqueName(self,prefix=""):

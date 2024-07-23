@@ -88,8 +88,9 @@ class Layout(object):
         }
     
     #FindObjects 
-    objTypes = ['pin', 'via', 'rect','circle', 'arc', 'line', 'poly','plg', 'circle void','line void', 'rect void', 
+    primitiveTypes = ['pin', 'via', 'rect','circle', 'arc', 'line', 'poly','plg', 'circle void','line void', 'rect void', 
            'poly void', 'plg void', 'text', 'cell','Measurement', 'Port', 'component', 'CS', 'S3D', 'ViaGroup']
+    definitionTypes = ["Layer","Material","Setup","PadStack","ComponentDef","Variable","Net"]
     
 
     def __init__(self, version=None, installDir=None,nonGraphical=False):
@@ -114,7 +115,7 @@ class Layout(object):
         self._info.update("Version", version)
         self._info.update("InstallDir", installDir)
         self._info.update("NonGraphical", nonGraphical)
-        self._info.update("UsePyAedt", None)
+        self._info.update("UsePyAedt", True)
         self._info.update("PyAedtApp", None)
         self._info.update("Log", log)
         self._info.update("options",options)
@@ -152,9 +153,7 @@ class Layout(object):
         
         if not isinstance(key, str):
             log.exception("key for layout must be str: %s"%key)
-        
-        
-        
+
         if key in self._info:
             return self._info[key]
         
@@ -164,7 +163,7 @@ class Layout(object):
         
         log.debug("try to get element type: %s"%key)
         
-        for ele in self.objTypes:
+        for ele in self.primitiveTypes:
             collection = ele+"s"
             if key in self._info[collection]:
                 log.debug("Try to return %s for key: %s"%(collection,key))
@@ -239,7 +238,18 @@ class Layout(object):
         #try to initial use pyaedt
         log.debug("Try to load pyaedt.")
         
-        self.__initByPyaedt()
+        #try to get global oDesktop
+        Module = sys.modules['__main__']
+        if hasattr(Module, "oDesktop"):
+            oDesktop = getattr(Module, "oDesktop")
+            if oDesktop:
+                self._oDesktop = oDesktop
+                self.UsePyAedt = bool(self.PyAedtApp) #may be lanuched from aedt internal
+                return oDesktop
+        
+        #try to intial by pyaedt
+        if self.UsePyAedt:
+            self.__initByPyaedt()
 
         #try to intial by internal method
         if self._oDesktop == None: 
@@ -362,10 +372,6 @@ class Layout(object):
         #intial log
         path = os.path.join(self._info.projectDir,"%s_%s.log"%(self._info.projectName,self._info.designName))
         if self.UsePyAedt:
-            pass
-#             log.logger._files_handlers[0].baseFilename = path
-#             log.logger.remove_file_logger(self.ProjectName)
-#             log.logger.add_file_logger(path,self.ProjectName)
             import logging
             fileHandler = log.logger.logger.handlers[0]
             fileHandler2 = logging.FileHandler(path)
@@ -395,7 +401,7 @@ class Layout(object):
         #for Primitives
         classDict = ComplexDict(dict([(name.lower(),obj) for name,obj in globals().items() if isinstance(obj,type)]))
         
-        for obj in self.objTypes:
+        for obj in self.primitiveTypes:
             key = obj.lower()+"s"
             if key.replace(" ","") in classDict:
                 info.update(key,classDict[key](layout = self))
@@ -423,6 +429,7 @@ class Layout(object):
         
 #         info.update("Primitives",Primitives(layout = self))
         info.update("unit",self.oEditor.GetActiveUnits())
+        info.update("Version",self.oDesktop.GetVersion())
         
         #intial geometry definition
         Polygen.layout = self
@@ -566,7 +573,23 @@ class Layout(object):
         'line void', 'rect void', 'poly void', 'plg void', 'text', 'cell', 'Measurement', 'Port', 'Port Instance', 
         'Port Instance Port', 'Edge Port', 'component', 'CS', 'S3D', 'ViaGroup'
         '''
+        if type.lower() == "all":
+            type = "*"
+            
         return self.layout.oEditor.FindObjects('Type',type)
+    
+    def getObjectsbyNet(self,net,type="*"):
+        
+        if type.lower() == "all":
+            type = "*"
+            
+        return self.oEditor.FilterObjectList('Type', type, self.oEditor.FindObjects('Net',net))
+        
+    def getObjectsbyLayer(self,layer,type="*"):
+        
+        if type.lower() == "all":
+            type = "*"
+        return self.oEditor.FilterObjectList('Type', type, self.oEditor.FindObjects('Layer',layer))
     
     def getObjectsBySquare(self,center,layer="*",sideLength="1mil"):
         '''

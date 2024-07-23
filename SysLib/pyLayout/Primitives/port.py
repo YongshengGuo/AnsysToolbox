@@ -34,13 +34,12 @@ class Port(Primitive):
             return
         
         super(self.__class__,self).parse(force) #initial component properties
-        
-        maps = self.maps.copy()
+
         EMProperties = self.layout.oEditor.GetProperties("EM Design","Excitations:%s"%self.Name)
         self._info.update("EMProperties",EMProperties)
         for prop in EMProperties:
             self._info.update(prop,None) #here give None value. get property value when used to improve running speed
-            maps.update({prop.replace(" ",""):prop}) #map property with space characters
+            self.maps.update({prop.replace(" ",""):prop}) #map property with space characters
 
         #---prot infomation
         for item in self.layout.oEditor.GetPortInfo(self.name):
@@ -49,9 +48,7 @@ class Port(Primitive):
                 self._info.update(splits[0].strip(),splits[1].strip())
             else:
                 log.debug("ignor port information: %s"%item)
-        
-        self._info.setMaps(maps)
-        
+                
     def get(self, key):
         
         if not self.parsed:
@@ -183,3 +180,12 @@ class Ports(Primitives):
         oModule.ReorderMatrix(rulePorts+unRulePorts)
         return rulePorts+unRulePorts
         
+    
+    def refresh(self):
+        self.portDict  = None
+        
+    def push(self,name):
+        self.PortDict.update(name,Port(name,layout=self.layout))
+    
+    def pop(self,name):
+        del self.PortDict[name]

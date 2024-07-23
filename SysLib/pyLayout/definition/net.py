@@ -39,82 +39,16 @@ Examples:
 import re
 from ..common.common import log
 from ..common.unit import Unit
-from  ..common.complexDict import ComplexDict
+from ..common.complexDict import ComplexDict
+from ..common.arrayStruct import ArrayStruct
+from .definition import Definitions,Definition
 
-
-class Net(object):
+class Net(Definition):
     '''_summary_
     '''
-    layoutTemp = None
     maps = {}
-    objTypes = ['pin', 'via', 'rect', 'arc', 'line', 'poly', 'plg', 
-                 'circle void', 'line void', 'rect void', 'poly void', 
-                 'plg void', 'text', 'cell', 'Measurement', 'Port', 
-                 'Port Instance', 'Port Instance Port', 'Edge Port', 
-                 'component', 'CS', 'S3D', 'ViaGroup']
-    def __init__(self,netName = None,layout=None):
-        '''Initialize Component object
-        Args:
-            compName (str): refdes of component in PCB, optional
-            layout (PyLayout): PyLayout object, optional
-        '''
-        
-        self.name = netName
-        self.parsed = None
-        self._info = None
-        if layout:
-            self.__class__.layoutTemp = layout
-            self.layout = layout
-        else:
-            self.layout = self.__class__.layoutTemp
-
-    def __repr__(self):
-        return "Net Object: %s"%self.Name
-
-    def __getitem__(self, key):
-        """
-        key: str
-        """
-        self.parse()
-        if key in self._info: 
-            key1 = self._info.getReallyKey(key)
-            self._info[key1] = self.getConnectedObjs(key1) 
-            return self._info[key1] #not use buffered values
-
-    def __getattr__(self,key):
-#         try:
-#             return super(self.__class__,self).__getattribute__(key)
-#         except:
-#             log.debug("Via __getattribute__ from _info")
-#             return self[key]
-        
-        if key in ["layout","name","_info","parsed"]:
-            return object.__getattr__(self,key)
-        else:
-            log.debug("__getattr__ from _dict: %s"%key)
-            return self[key]
-
-    def __dir__(self):
-        return list(dir(self.__class__)) + list(self.__dict__.keys()) + list(self.Props)
-
-    @property
-    def Info(self):
-        if not self._info:
-            self.parse()
-            
-        return self._info
-    
-    @property
-    def Props(self):
-        propKeys = list(self.Info.Keys)
-        if self.maps:
-            propKeys += list(self.maps.keys())
-        return propKeys
-    
-    
-    @property
-    def Name(self):
-        return self.name
+    def __init__(self, name = None,layout = None):
+        super(self.__class__,self).__init__(name,type="Net",layout=layout)
     
     @property
     def IsPowerNet(self):
@@ -127,23 +61,58 @@ class Net(object):
     def IsNaming(self):
         return not re.match(r"(^N[^a-z]+)|(^UNNAMED.*)$",self.name,re.I)
     
-    @property
-    def Objs(self):
-        return self.getConnectedObjs()
-#         return self.layout.oEditor.FindObjects('Net',self.Name)
     
-    def parse(self):
-        if self.parsed:
+    def parse(self,force = False):
+        '''
+        mapping key must not have same value with maped key.
+        '''
+        
+        if self.parsed and not force:
             return
-        self._info = ComplexDict()
-        maps = self.maps
-        for t in self.objTypes:
-            self._info.update(t, None)
-            if " " in t:
-                maps[t.replace(" ","")] = t
+        maps = self.maps.copy()
+        _array = ArrayStruct([])
+        self._info.update("Name",self.name)
+        self._info.update("Array", _array)
+        
+        maps.update({"Objects":{
+            "Key":"Name",
+            "Get":lambda k:self._getObjects()
+            }})
+            
         self._info.setMaps(maps)
         self.parsed = True
+
+#     def _getObjects(self):
+#         objectCDicts = ComplexDict()
+#         objsList = []
+#         for type in self.layout.primitiveTypes:
+#             objs = self.layout.getObjectsbyNet(self.name,type)
+#             objectCDicts.update(type+"s", objs)
+#             objsList += objs
+#         objectCDicts.update("All",objsList)
+#         return objectCDicts
     
+    def _getObjects(self):
+        objectCDicts = ComplexDict()
+        maps = {}
+        objectCDicts.update("Net", self.name)
+        for type in self.layout.primitiveTypes:
+            objectCDicts.update(type+"s",type)
+            fxDict = {
+                "Key":type+"s",
+                "Get":lambda k:self.getConnectedObjs(k)
+                }
+            maps.update({type+"s":fxDict})
+        
+        objectCDicts.update("All","*")
+        maps.update({"All":{
+            "Key":"All",
+            "Get":lambda k:self.getConnectedObjs(k)
+            }})
+        objectCDicts.setMaps(maps)
+        return objectCDicts
+    
+
     def getConnectedPins(self):
         return self.getConnectedObjs('pin')
 
@@ -156,11 +125,8 @@ class Net(object):
         return self.getConnectedObjs('Port')
 
     
-    def getConnectedObjs(self,typ = None):
-        if typ:
-            return self.layout.oEditor.FilterObjectList('Type', typ, self.layout.oEditor.FindObjects('Net', self.Name))
-        else:
-            return self.layout.oEditor.FindObjects('Net',self.Name)
+    def getConnectedObjs(self,typ = "*"):
+        return self.layout.getObjectsbyNet(self.Name,typ)
     
     def getLength(self,unit = None):
         '''
@@ -176,7 +142,7 @@ class Net(object):
         if not lines:
             return None
 
-        segLens = [Unit(o.TotalLength) for o in lines]
+        segLens = [Unit(self.layout.lines[o].TotalLength) for o in lines]
         if unit is None:
             return sum(segLens)
         else:
@@ -210,7 +176,7 @@ class Net(object):
         for via in viaNames:
             self.layout.vias[via].backdrill(stub = stub)
             
-    def renameNet(self,newNet):
+    def rename(self,newNet):
         objs = self.layout.oEditor.FindObjects('Net', self.Name)
 
         if len(objs)==0:
@@ -239,121 +205,33 @@ class Net(object):
     def delete(self):
         self.layout.oEditor.DeleteNets([self.Name])
 
-class Nets(object):
+class Nets(Definitions):
 
     def __init__(self,layout=None):
-        '''Initialize Component object
-        Args:
-            compName (str): refdes of component in PCB, optional
-            layout (PyLayout): PyLayout object, optional
-        '''
-        
-#         self._netList = None
-        self.netDict = None
-        
-        self.layout = layout
-            
+        super(self.__class__,self).__init__(layout, type="Net",definitionCalss=Net)
 
-    def __getitem__(self, key):
-        """
-        key: str, regex, list, slice
-        """
-        
-        if isinstance(key, int):
-            return self.NetDict[key]
-        
-        if isinstance(key, slice):
-            return self.NetDict[key]
-        
-        if isinstance(key, str):
-            return self.NetDict[key]
-            
-#             nets = [name for name in self.NetDict.Keys if re.match(r"^%s$"%key,name,re.I)]
-#             if not nets:
-#                 raise Exception("not found net: %s"%key)
-#             
-#             #非正则表达式，返回器件自身
-#             if len(nets) == 1:
-#                 return self.NetDict[nets[0]]
-#             else:
-#                 #如果找到多个器件（正则表达式），返回列表
-#                 return self[nets]
-        
-        if isinstance(key, (list,tuple)):
-            return [self[i] for i in list(key)]
-    
-    def __getattr__(self,key):
-        try:
-            return super(self.__class__,self).__getattribute__(key)
-        except:
-            log.debug("Nets __getattribute__ from _info: %s"%str(key))
-            return self[key]
-    
-    def __contains__(self,key):
-        return key in self.NetDict 
-            
-    def __len__(self):
-        return len(self.NetDict)
-            
+#     def _getDefinitionDict(self):
+#         return  ComplexDict(dict([(name,Net(name,self.layout)) for name in self.layout.oEditor.GetNetClassNets('<All>')]))
+
     @property
-    def oProject(self):
-        return self.layout.oProject
-    
-    @property
-    def oDesign(self):
-        return self.layout.oDesign
-    
-    @property
-    def oEditor(self):
-        return self.layout.oEditor 
-    
-    @property
-    def NetDict(self):
-        if self.netDict is None:
-            self.netDict = ComplexDict(dict([(name,Net(name,layout=self.layout)) for name in self.oEditor.GetNetClassNets('<All>')]))
-        return self.netDict
-    
-    @property
-    def All(self):
-        return self.NetDict
-    
-    @property
-    def Names(self):
-        return self.NetDict.Keys
-    
-    
-    def getByLayer(self,layerName):
-        '''
-        type: [] or str
-        '''
-        objsLayer = self.layout.oEditor.FilterObjectList('Layer', layerName, self.layout.oEditor.FindObjects('Type',"port"))
-        objsPolys = list(self.filter(lambda x: x.name in objsLayer))
-        return objsPolys
-    
-    def refresh(self):
-        self.PortDict  = None
-        
-    def push(self,name):
-        self.NetDict.update(name,Net(name,layout=self.layout))
-    
-    def pop(self,name):
-        del self.NetDict[name]
-    
-    @property
-    def NetNames(self):    
-        return self.NetDict.Keys
-    
+    def DefinitionDict(self):
+        if self._definitionDict == None:
+            self._definitionDict  = ComplexDict(dict([(name,Net(name,self.layout)) for name in self.layout.oEditor.GetNetClassNets('<All>')]))
+#             self._definitionDict  = self._getDefinitionDict()
+        return self._definitionDict
+
+
     @property
     def SignalNetNames(self):
-        allNets = self.oEditor.GetNetClassNets('<All>')
-        pwrNets = self.oEditor.GetNetClassNets('<Power/Ground>')
+        allNets = self.layout.oEditor.GetNetClassNets('<All>')
+        pwrNets = self.layout.oEditor.GetNetClassNets('<Power/Ground>')
         sigNets = [net for net in allNets if net not in pwrNets]
         sigNets.remove("<NO-NET>")
         return sigNets
         
     @property
     def PowerNetNames(self):
-        return self.oEditor.GetNetClassNets('<Power/Ground>') 
+        return self.layout.oEditor.GetNetClassNets('<Power/Ground>') 
             
     #--- for Nets
     
@@ -365,7 +243,7 @@ class Nets(object):
         temp = []
         for net in nets:
 #             compNames = self.__class__(net).CompNames
-            compNames = self.NetDict[net].getConnectedComponnets()
+            compNames = self.DefinitionDict[net].getConnectedComponnets()
             if ignorRLC:
                 compNames = [c for c in compNames if self.layout.Components[c].PartType not in ["Resistor","Inductor","Capacitor"]]
             temp += compNames
@@ -386,7 +264,7 @@ class Nets(object):
         else:
             compNames= comps
              
-        self.oEditor.CreatePortsOnComponentsByNet(
+        self.layout.oEditor.CreatePortsOnComponentsByNet(
             ["NAME:Components"]+compNames,["NAME:Nets"]+nets, "Port", "0", "0", "0")
 
     def getRegularNets(self,regNets):
@@ -423,7 +301,7 @@ class Nets(object):
 
         for regNet in regNets:
             regNet = regNet.replace("$","\$").strip()
-            nets += filter(lambda x: re.match(regNet+"$",x,re.IGNORECASE),self.NetNames)
+            nets += filter(lambda x: re.match(regNet+"$",x,re.IGNORECASE),self.NameList)
         return nets
     
     
@@ -470,7 +348,7 @@ class Nets(object):
                 
                 if re.match(r"^(N?\d+$)|(UNNAMED.*)|(\$.*)",pnet,re.I) and re.match(r"^N?[a-z0-9_]+[a-z]+",nnet,re.I): 
                     log.info(comp.Name+" Nets: "+ nnet + " " + pnet+ ": Rename "+ pnet + " to " + nnet+tail)
-                    self.layout.Nets[pnet].renameNet(nnet+tail)
+                    self.layout.Nets[pnet].rename(nnet+tail)
                 if re.match(r"^(N?\d+$)|(UNNAMED.*)|(\$.*)",nnet,re.I) and re.match(r"^N?[a-z0-9_]+[a-z]+",pnet,re.I): 
                     log.info(comp.Name+" Nets: "+ pnet + " " + nnet + ": Rename "+ nnet + " to " + pnet+tail)
-                    self.layout.Nets[nnet].renameNet(pnet+tail)
+                    self.layout.Nets[nnet].rename(pnet+tail)

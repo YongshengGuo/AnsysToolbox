@@ -12,7 +12,7 @@ from .definition import Definitions,Definition
 import math
 
 
-class Material(object):
+class Material(Definition):
     '''
     oMaterialManager.GetData()
     ['NAME:copper', 'CoordinateSystemType:=', 'Cartesian', 'BulkOrSurfaceType:=', 1, 
@@ -41,75 +41,44 @@ class Material(object):
     
 
     def __init__(self, name = None,array = None,layout = None):
-        self.name = name
-        self._array = array
-#         self._oDefinitionManager = None
+        super(self.__class__,self).__init__(name,type="Material",layout=layout)
+
+
+    def parse(self,force = False):
+        '''
+        mapping key must not have same value with maped key.
+        '''
         
-        if layout:
-            self.__class__.layoutTemp = layout
-            self.layout = layout
+        if self.parsed and not force:
+            return
+        
+        log.debug("parse definition: %s"%self.name)
+        maps = self.maps.copy()
+        
+        datas = self.oManager.GetData(self.name)
+        if datas:
+            _array =  ArrayStruct(tuple2list(hfss3DLParameters.material),maps=self.maps)
+            _array.update(ArrayStruct(datas))
         else:
-            self.layout = self.__class__.layoutTemp
+            _array = ArrayStruct([])
         
-            
-    def __getitem__(self, key):
-        return self.Info[key]
-    
-    def __setitem__(self, key,value):
-        self.Info[key] = value
-        self.update()
-    
-    
-    def __getattr__(self,key):
-        try:
-            return super(self.__class__,self).__getattribute__(key)
-        except:
-            log.debug("__getattribute__ from _array")
-            return self[key]
+#         self._info.update("self", self)    
+        self._info.update("Name",self.name)
+        self._info.update("Array", _array)
+        
+        self.maps = maps
+        self.parsed = True
 
-    
-    def __repr__(self):
-        return "Material Object: %s"%self.Name
 
-    def __dir__(self):
-        return list(dir(self.__class__)) + list(self.__dict__.keys()) + list(self.Props)
-    
-    @property
-    def Props(self):
-        propKeys = self.Info.Keys
-        
-        if self.maps:
-            propKeys += self.maps.keys()
-             
-        return propKeys
+#     def parse(self):
+#         self._array = ArrayStruct(tuple2list(hfss3DLParameters.material),maps=self.maps)
+#         oMaterialManager = self.oDefinitionManager.GetManager("Material")
+#         datas = oMaterialManager.GetData(self.name)
+#         if not datas:
+#             log.exception("Material not exist: %s"%self.name)
+# 
+#         self._array.update(ArrayStruct(datas))
 
-    
-    @property
-    def Name(self):
-        return self.name
-    
-
-    @property
-    def oDefinitionManager(self):
-        return self.layout.oProject.GetDefinitionManager()
-        
-    @property
-    def Info(self):
-        if not self._array:
-            self.parse()
-                
-        return self._array
-        
-        
-    def parse(self):
-        self._array = ArrayStruct(tuple2list(hfss3DLParameters.material),maps=self.maps)
-        oMaterialManager = self.oDefinitionManager.GetManager("Material")
-        datas = oMaterialManager.GetData(self.name)
-        if not datas:
-            log.exception("Material not exist: %s"%self.name)
-
-        self._array.update(ArrayStruct(datas))
-        
     def update(self):
         '''
         update the material parameters to project
@@ -120,9 +89,10 @@ class Material(object):
         #oDefinitionManager.AddMaterial(["NAME:Material1",["NAME:PhysicsTypes","set:=", ["Electromagnetic","Thermal","Structural"]]])
         
         if self.oDefinitionManager.DoesMaterialExist(self.name):
-            self.oDefinitionManager.EditMaterial(self.name,self.Info.Array)
+            self.oDefinitionManager.EditMaterial(self.name,self.Array.Datas)
         else:
-            self.oDefinitionManager.AddMaterial(self.Info.Array)
+            self.oDefinitionManager.AddMaterial(self.Array.Datas)
+            
 
     def isConductor(self,threshed=10000):
         
@@ -137,7 +107,8 @@ class Material(object):
         
         #1e-12+2.84472e-12*Freq*(atan(Freq/70403)-atan(Freq/1.59155e+11))
         if "Freq" in self.conductivity:
-            from math import atan,log,log10
+            from math import atan,log10
+            from math import log as ln
             Freq = 1
             
             try:
@@ -150,60 +121,56 @@ class Material(object):
                 #conductivity is expression
                 log.debug("float(conductivity) error:%s"%self.conductivity)
         
-        
-#         try:
-#             dk = float(self.permittivity)
-#             if dk>1.05:
-#                 return False
-#             else:
-#                 return True
-#         except:
-#             #if dk and conductivity are expression
-#             return False
-        
+        log.warning("Can't justment the material %s is counductor or not, just return False."%self.name)
         return False
 
     
-class Materials(object):
+class Materials(Definitions):
 
-    def __init__(self,layout = None):
-        self.layout = layout
-        Material.layoutTemp = layout
+    def __init__(self,layout=None):
+        super(self.__class__,self).__init__(layout, type="Material",definitionCalss=Material)
             
     def __getitem__(self, key):
-#         key = key.replace('"',"") # fix hfss material
-        return self.getByName(key)
+        try:
+            return super(self.__class__,self).__getitem__(key)
+        except: 
+            return self.getByName(key)
             
     def __contains__(self,key):
         #key is case-insensitive
-        return bool(self.oDefinitionManager.DoesMaterialExist(key))
-            
-            
-    def __getattr__(self,key):
-        if key in ['__get__','__set__']:
-            #just for debug run
-            return None
+        if super(self.__class__,self).__contains__(key):
+            return True
         
-        try:
-            return super(self.__class__,self).__getattribute__(key)
-        except:
-            log.debug("Layers __getattribute__ from _info: %s"%str(key))
-            return self[key]
-            
-    @property
-    def oDefinitionManager(self):
-        return self.layout.oProject.GetDefinitionManager()    
-            
-            
+        return bool(self.getByName(key))
 
-    def create(self,infoDict,name=None):
+
+#     @property
+#     def DefinitionDict(self):
+#         if self._definitionDict == None:
+#             log.warning("Materials collection only has material in project, material in SysLibrary will not include in Materials collection. \
+#                 But you can use Material(name) or getByName(name) to get the Material object in SysLibrary")
+#             oManager = self.oDefinitionManager.GetManager("Material")
+#             self._definitionDict = ComplexDict(dict([(name,Material(name,layout=self.layout)) for name in oManager.GetNames()]))
+#         return self._definitionDict
+    
+#     @property
+#     def DefinitionDict(self):
+#         if self._definitionDict == None:
+#             oDefinitionManager = self.layout.oProject.GetDefinitionManager()
+#             oManager = oDefinitionManager.GetManager(self.type)
+#             self._definitionDict  = ComplexDict(dict([(name,self.definitionCalss(name,layout=self.layout)) for name in oManager.GetNames()]))
+#         return self._definitionDict
+    
+            
+    def create(self,infoDict={},name=None,**kwargs):
         '''
         infoDict(dict): {name:copper,....}
         
         Only create the Material object, not add to layout
         '''
         ops = ComplexDict(infoDict)
-        ary = ArrayStruct(tuple2list(hfss3DLParameters.material),maps=Material.maps)
+        ops.updates(kwargs)
+        ary = ArrayStruct(tuple2list(hfss3DLParameters.material),maps=Material.maps).copy()
         
         if name:
 #             name = name
@@ -223,18 +190,21 @@ class Materials(object):
             else:
                 log.info("Material key '%s' ignor."%k)
                 
-        material = Material(name,ary,layout=self.layout)
+        material = Material(name,layout=self.layout)
+        material.Array = ary
 #         material._info = ary
         return material
             
             
-    def add(self,infoDict,name=None):
+    def add(self,infoDict={},name=None,**kwargs):
         '''
         info(dict): {name:copper,....}
         if material not exist, will add, else will edit
         '''
-        material = self.create(infoDict,name)
+        material = self.create(infoDict,name,**kwargs)
         material.update()
+        self.push(material.name)
+        return material
         
     def addHFSSDSModle(self,name,dk=4,df=0.02,f1=1e9,cond_dc=1e-12,fB=10**12/(2*math.pi)):
         '''
@@ -331,5 +301,13 @@ class Materials(object):
 #         if not oDefinitionManager.DoesMaterialExist(name): #only for project material
 #             raise Exception("Material not definition: %s"%name)
 #         oMaterialManager = oDefinitionManager.GetManager("Material")
- 
-        return Material(name)
+        rst = super(self.__class__,self).getByName(name)
+        if rst:
+            return rst
+        else:
+            temp =  Material(name)
+            if temp.Array.Datas:
+                return temp
+            else:
+                return None
+            

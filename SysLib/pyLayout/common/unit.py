@@ -145,10 +145,10 @@ class Unit(object):
         return self.convertoNewUnit(unit)
     
     def __str__(self):
-        return self.Expression
+        return self._value
 
     def __repr__(self):
-        return self.Expression
+        return self._value
     
     def __float__(self):
         return self.V
