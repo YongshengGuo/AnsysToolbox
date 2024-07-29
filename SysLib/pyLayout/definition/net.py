@@ -75,22 +75,13 @@ class Net(Definition):
         self._info.update("Array", _array)
         
         maps.update({"Objects":{
-            "Key":"Name",
-            "Get":lambda k:self._getObjects()
+            "Key":"self",
+            "Get":lambda s:s._getObjects()
             }})
             
         self._info.setMaps(maps)
+        self._info.update("self", self)
         self.parsed = True
-
-#     def _getObjects(self):
-#         objectCDicts = ComplexDict()
-#         objsList = []
-#         for type in self.layout.primitiveTypes:
-#             objs = self.layout.getObjectsbyNet(self.name,type)
-#             objectCDicts.update(type+"s", objs)
-#             objsList += objs
-#         objectCDicts.update("All",objsList)
-#         return objectCDicts
     
     def _getObjects(self):
         objectCDicts = ComplexDict()
@@ -99,15 +90,15 @@ class Net(Definition):
         for type in self.layout.primitiveTypes:
             objectCDicts.update(type+"s",type)
             fxDict = {
-                "Key":type+"s",
-                "Get":lambda k:self.getConnectedObjs(k)
+                "Key":("self",type+"s"),
+                "Get":lambda s,k:s.getConnectedObjs(k)
                 }
             maps.update({type+"s":fxDict})
         
         objectCDicts.update("All","*")
         maps.update({"All":{
-            "Key":"All",
-            "Get":lambda k:self.getConnectedObjs(k)
+            "Key":("self",type+"s"),
+            "Get":lambda s,k:s.getConnectedObjs(k)
             }})
         objectCDicts.setMaps(maps)
         return objectCDicts

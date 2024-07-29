@@ -21,7 +21,7 @@ from ..common.complexDict import ComplexDict
 from ..common.unit import Unit
 from ..common.common import log,tuple2list
 from .definition import Definitions,Definition
-from ..common.common import log
+from ..common.progressBar import ProgressBar
 
 class Sweep(Definition):
     
@@ -97,7 +97,7 @@ class Sweep(Definition):
         self._info.update("Name",self.name)
         self._info.update("Array", _array)
 #         self.__class__.maps = maps
-            
+        self._info.update("self", self)
         self.parsed = True
 
 
@@ -213,12 +213,12 @@ class Setup(Definition):
         self._info.update("Name",self.name)
         maps = {}
         maps.update({"Sweeps":{
-            "Key":"Name",
-            "Get":lambda k: Sweeps(layout=self.layout,setupName=self.name) #[Sweep(k,sweepName) for sweepName in self.oModule.GetSweeps(self.name)]
+            "Key":"self",
+            "Get":lambda s: Sweeps(layout=s.layout,setupName=s.name) #[Sweep(k,sweepName) for sweepName in self.oModule.GetSweeps(self.name)]
             }})
         
         self._info.setMaps(maps)
-            
+        self._info.update("self", self)    
         self.parsed = True
 
 
@@ -308,31 +308,31 @@ class Setup(Definition):
         #wait for output
         import time
         i = 0
-        timeout = 20*60
+        bar = ProgressBar(prompt="Export to 3D Model")
+        bar.showProgress()
         while(i<timeout):
             if os.path.exists(path):
                 break
             time.sleep(2) #sleep 1s
             i += 2
             
-            if i%5 == 0:
-                log.info("Wait for hfss project ready: %ss"%i)
-            
+#             if i%5 == 0:
+#                 log.info("Export to hfss 3D project ... : %ss"%i)
+        bar.stop()
         if i>=timeout:
-            log.exception("export to hfss failed.")
+            log.exception("time out (>30 mins), Execution interrupt... .")
             
-        
-#         for net in self.layout.Nets:
-#             for obj in net.getConnectedObjs():
-#                 netInfo.update({obj:net.name})
-        
         from ..model3D.HFSS import HFSS
         hfss = HFSS()
         hfss.openAedt(path)
         unit = hfss.getUnit()
         netInfo = {}
         log.info("Get net information ... ")
+        
+        bar = ProgressBar(len(hfss.Objects),"Get net information progress")
+        
         for obj in hfss.Objects:
+            bar.showPercent()
             #skip sheet objects
             if "Material" not in obj:
                 log.debug("%s not have Material property, skip."%obj.name)
@@ -355,16 +355,100 @@ class Setup(Definition):
                     else:
                         continue
                 if not net:
-                    log.error("obj %s not found."%obj2.name)
+                    log.error("\nobj %s not found."%obj2)
+                else:
+                    netInfo.update({obj.name:net})
+            else:
+                log.debug("Not found object on layout:%s"%obj.name)                 
+        hfss.groupbyNets(netInfo)
+                
+        return hfss
+
+
+    def exportToQ3D(self,path = None,timeout = 30*60):
+        if not path:
+            path = os.path.join(self.layout.projectDir, "%s_%s.aedt"%(self.layout.projectName,self.layout.designName))
+            
+        log.info("Export 3D Layout design to Q3D: %s"%path)
+        self.oModule.ExportToQ3D (self.name, path)
+        
+        #wait for output
+        import time
+        i = 0
+        bar = ProgressBar(prompt="Export to 3D Model")
+        bar.showProgress()
+        while(i<timeout):
+            if os.path.exists(path):
+                break
+            time.sleep(2) #sleep 1s
+            i += 2
+            
+#             if i%5 == 0:
+#                 log.info("Export to Q3D project ... : %ss"%i)
+        bar.stop()
+        
+        if i>=timeout:
+            log.exception("time out (>30 mins), Execution interrupt... .")
+            
+        from ..model3D.Q3D import Q3D
+        q3d = Q3D()
+        q3d.openAedt(path)
+        unit = q3d.getUnit()
+        netInfo = {}
+        log.info("Get net information ... please wait for some minitus ...........")
+        
+        bar = ProgressBar(len(q3d.Objects),"Get net information progress")
+        for obj in q3d.Objects:
+            bar.showPercent()
+            #skip sheet objects
+            if "Material" not in obj:
+                log.debug("%s not have Material property, skip."%obj.name)
+                continue
+            
+            #skip dielectric
+            if not q3d.Materials[obj.Material].isConductor():
+                log.debug("%s is dielectric object, skip."%obj.name)
+                continue
+            
+            pt0 = ["%s%s"%(x,unit) for x in  obj.Vertexs[0]]
+            layer = self.layout.layers.getLayerByHeight(pt0[2])
+            layoutObjs = self.layout.getObjectByPoint([pt0[0],pt0[1]],layer=layer)
+            if layoutObjs:
+                net = None
+                for obj2 in layoutObjs:
+                    if "Net" in  self.layout[obj2].Props:
+                        net = self.layout[obj2].Net
+                        break
+                    else:
+                        continue
+                if not net:
+                    log.error("\nobj %s not found."%obj2)
                 else:
                     netInfo.update({obj.name:net})
             else:
                 log.debug("Not found object on layout:%s"%obj.name)                 
         
-        hfss.groupbyNets(netInfo)
+        q3d.groupbyNets(netInfo)
                 
-        return path
+        return q3d
     
+    
+
+    def exportToMaxwell(self,path = None,timeout = 30*60):
+        log.info("First export to Q3D, then Copy to Maxwell")
+        q3d = self.exportToQ3D(path, timeout)
+        
+        from ..model3D.maxwell import Maxwell
+        maxwell = Maxwell()
+        maxwell.newDesign(q3d.designName+"_maxwell",q3d.projectName)
+        q3d.oEditor.Copy(["NAME:Selections","Selections:=",",".join(q3d.AllParts)])
+        maxwell.oEditor.Paste()
+        q3d.deleteDesign()
+        log.info("Finished to export 3D Layout design to  Maxwell.")
+        
+        
+        
+        
     
     #--- mesh
 #         

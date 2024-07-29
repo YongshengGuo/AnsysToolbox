@@ -9,6 +9,7 @@ common.py模块主要用于存放一些常用的函数接口，比如加载json,
 log is a global variable for log module, every module can import this variable to output log information.
 
 '''
+from __future__ import print_function
 
 import re
 import os
@@ -16,6 +17,9 @@ import sys
 import csv,json
 from copy import deepcopy
 from shutil import copy
+from functools import wraps
+import time
+import contextlib  # 引入上下文管理包
 
 #intial log
 from .log import Log as logger
@@ -277,7 +281,10 @@ def regAnyMatch(regs,val,flags = re.IGNORECASE):
     
     if not isinstance(regs,str) and isinstance(val, str):
         return any([regAnyMatch(r+"$",val) for r in regs])
-    
+
+    if not isinstance(val, (str,list,tuple)):
+        return False
+
     return any([regAnyMatch(regs,v) for v in val])
 
 def copyAedt(source,target):
@@ -310,3 +317,64 @@ def copyAedt(source,target):
         log.debug("make dir: %s"%edbTargetdir)
         os.mkdir(edbTargetdir)
     copy(edbSource,edbTargetdir)
+    
+    
+    
+
+def ProcessTime(func):
+    @wraps(func)
+    def wrapped_function(*args, **kwargs):
+        log.info("start function: {0}".format(func.__name__))
+        if isIronpython:
+            tfun = time.clock
+        else:
+            tfun = time.time
+            
+        start = tfun()
+        return func(*args, **kwargs)
+        end = tfun()
+        
+        log.info("{0}: Process time {1}s".format(func.__name__,end-start))
+    return wrapped_function
+
+def DisableAutoSave(func):
+    @wraps(func)
+    def wrapped_function(self,*args, **kwargs):
+        log.info("Disable AutoSave for function: {0}".format(func.__name__))
+        temp = self.layout.enableAutosave(flag=False)
+        func(self,*args, **kwargs)
+        log.info("Recover AutoSave for function: {0}".format(func.__name__))
+        temp = self.layout.enableAutosave(flag=temp)
+    return wrapped_function
+
+
+# class ProgressBar(object):
+# 
+#     def __init__(self,total=100,prompt="progress",step=3):
+#         self.total = total
+#         self.prompt = prompt
+#         self.step = step
+#         self.pos = 0
+#         self.temp = 0
+#         self.start = None
+#         
+#     def showPercent(self,pos=None):
+#         if self.start == None:
+#             self.start = time.time()
+#         if pos==None:
+#             self.pos +=1
+#         else:
+#             self.pos = None
+#             
+#         progress = int(self.pos*100/self.total)
+#         if progress>self.temp:
+# #             print("\r{} %{}: {}".format(self.prompt,progress, "#" * (int(progress/self.step)+1)),end="")
+#             finsh = "▓" * int(progress/self.step+1)
+#             need_do = "-" * int(100/self.step - int(progress/self.step+1))
+#             dur = time.time() - self.start
+#             print("\r{}: {:^3.0f}%[{}->{}]  {:.2f}s  ".format(self.prompt,progress, finsh, need_do, dur), end="")          
+# #             sys.stdout.flush()
+#             self.temp = progress
+#         
+#     def animation(self):
+#         pass

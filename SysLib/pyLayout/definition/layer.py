@@ -210,6 +210,8 @@ class Layer(Definition):
         
         maps = self.maps.copy()
         info = ComplexDict(dict(filter(lambda x: len(x) == 2, [p.strip().split(": ", 1) for p in self.layout.oEditor.GetLayerInfo(self.name)])))
+        
+        
 #         info.setMaps(self.maps)
         if info["Type"] == "signal":
             if "Roughness0" in info:
@@ -236,22 +238,24 @@ class Layer(Definition):
             if info[key] == "false":
                 info[key] = False
 
+
+
+
         maps.update({"indexIntra":{
-            "Key":"Name",
-            "Get":lambda k: self._getIndexIntra()
+            "Key":"self",
+            "Get":lambda s: s._getIndexIntra()
             }})
         
         maps.update({"HalfStackup":{
-            "Key":"Name",
-            "Get":lambda k: self._halfStack()
+            "Key":"self",
+            "Get":lambda s: s._halfStack()
             }})
                 
     
         maps.update({"Objects":{
-            "Key":"Name",
-            "Get":lambda k:self._getObjects()
+            "Key":"self",
+            "Get":lambda s:s._getObjects()
             }})
-#         self._info.update("Objects",self._getObjects())
             
     
         if self._info:
@@ -262,6 +266,7 @@ class Layer(Definition):
         _array = ArrayStruct([])
         self._info.update("Name",self.name)
         self._info.update("Array", _array)
+        self._info.update("self", self)    
         self._info.setMaps(maps)
 
         self.parsed = True
@@ -311,18 +316,19 @@ class Layer(Definition):
         objectCDicts = ComplexDict()
         maps = {}
         objectCDicts.update("Layer", self.name)
+        objectCDicts.update("self", self)
         for type in self.layout.primitiveTypes:
             objectCDicts.update(type+"s",type)
             fxDict = {
-                "Key":type+"s",
-                "Get":lambda k:self.getObjectsbyLayer(k)
+                "Key":("self",type+"s"),
+                "Get":lambda s,k:s.getObjectsbyLayer(k) 
                 }
             maps.update({type+"s":fxDict})
         
         objectCDicts.update("All","*")
         maps.update({"All":{
-            "Key":"All",
-            "Get":lambda k:self.getObjectsbyLayer(k)
+            "Key":("self","All"),
+            "Get":lambda s,k:s.getObjectsbyLayer(k)
             }})
         objectCDicts.setMaps(maps)
         return objectCDicts

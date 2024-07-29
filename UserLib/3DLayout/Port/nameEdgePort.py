@@ -39,7 +39,7 @@ def main():
         X = float(splits[0])
         Y = float(splits[1])
         layer = splits[-1]
-        posObjs = list(layout.getObjectByPoint([X,Y],layer = layer,radius="2mil"))
+        posObjs = list(layout.getObjectByPoint([X,Y],layer = layer,radius="1mil"))
         print(port.Name,posObjs,layer)
 
         if port.Name in posObjs:

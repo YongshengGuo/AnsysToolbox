@@ -57,18 +57,30 @@ class Material(Definition):
         
         datas = self.oManager.GetData(self.name)
         if datas:
-            _array =  ArrayStruct(tuple2list(hfss3DLParameters.material),maps=self.maps)
+            _array =  ArrayStruct(tuple2list(hfss3DLParameters.material),maps=maps)
             _array.update(ArrayStruct(datas))
         else:
             _array = ArrayStruct([])
         
-#         self._info.update("self", self)    
+#         self._info.update("self", self)
         self._info.update("Name",self.name)
         self._info.update("Array", _array)
         
+        map2 = {}
+        map2.update({"IsMetal":{
+            "Key":"self",
+            "Get":lambda s: s.isConductor()
+            }})
+        
+        map2.update({"IsDielectric":{
+            "Key":"self",
+            "Get":lambda s: not s.isConductor()
+            }})
+        
+        self._info.update("self", self)    
+        self._info.setMaps(map2)
         self.maps = maps
         self.parsed = True
-
 
 #     def parse(self):
 #         self._array = ArrayStruct(tuple2list(hfss3DLParameters.material),maps=self.maps)
@@ -106,21 +118,17 @@ class Material(Definition):
             log.debug("float(conductivity) error:%s"%self.conductivity)
         
         #1e-12+2.84472e-12*Freq*(atan(Freq/70403)-atan(Freq/1.59155e+11))
-        if "Freq" in self.conductivity:
-            from math import atan,log10
-            from math import log as ln
-            Freq = 1
-            
-            try:
-                conductivity = eval(self.conductivity)
-                if float(conductivity) < 10000:
-                    return False
-                else:
-                    return True
-            except:
-                #conductivity is expression
-                log.debug("float(conductivity) error:%s"%self.conductivity)
-        
+        try:
+            evalValue = self.layout.Variables.evalExpression(self.conductivity)
+            evalValue = self.layout.Variables.EvalExpressionValue.SIValue
+            if float(evalValue) < 10000:
+                return False
+            else:
+                return True
+        except:
+            #conductivity is expression
+            log.debug("Eval conductivity value error:%s"%self.conductivity)
+
         log.warning("Can't justment the material %s is counductor or not, just return False."%self.name)
         return False
 

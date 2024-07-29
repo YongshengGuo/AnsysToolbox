@@ -1,12 +1,15 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Menu>
 	<SubMenu Name="Export" DesignType="3DLayout">
-		<SubMenu Type="MenuItem" Name="ExportToHfssWithNets" ExecuteType="Python" Path="$UserLib/3DLayout/export/export2HfssWithNets.py" Arguments ="" PythonPath="" entryFunction="main"></SubMenu>
+		<SubMenu Type="MenuItem" Name="ExportToHfssWithNets" ExecuteType="Python" Path="$UserLib/3DLayout/export/export3DModelWithNets.py" Arguments ="" PythonPath="" EntryFunc="export2HFSS"/>
+		<SubMenu Type="MenuItem" Name="ExportToQ3DWithNets" ExecuteType="Python" Path="$UserLib/3DLayout/export/export3DModelWithNets.py" Arguments ="" PythonPath="" EntryFunc="export2Q3D"/>
+		<SubMenu Type="MenuItem" Name="ExportToMaxwellWithNets" ExecuteType="Python" Path="$UserLib/3DLayout/export/export3DModelWithNets.py" Arguments ="" PythonPath="" EntryFunc="export2Maxwell"/>
+
 	</SubMenu>
 	
 	<SubMenu Name="Stackup" DesignType="3DLayout">
-		<SubMenu Type="MenuItem" Name="ImportCSVStackup" ExecuteType="Python" Path="$UserLib/3DLayout/Stackup/importCSVStackup.py" Arguments ="" PythonPath="" entryFunction="main"></SubMenu>
-		<SubMenu Type="MenuItem" Name="ExportCSVStackup" ExecuteType="Python" Path="$UserLib/3DLayout/Stackup/exportCSVStackup.py" Arguments ="" PythonPath="" entryFunction="main"></SubMenu>
+		<SubMenu Type="MenuItem" Name="ImportCSVStackup" ExecuteType="Python" Path="$UserLib/3DLayout/Stackup/importCSVStackup.py" Arguments ="" PythonPath="" EntryFunc="main"></SubMenu>
+		<SubMenu Type="MenuItem" Name="ExportCSVStackup" ExecuteType="Python" Path="$UserLib/3DLayout/Stackup/exportCSVStackup.py" Arguments ="" PythonPath="" EntryFunc="main"></SubMenu>
 	</SubMenu>
 	<SubMenu Name="Net" DesignType="3DLayout">
 		<SubMenu Type="MenuItem" Name="AutoXNet" ExecuteType="Python" Path="$UserLib/3DLayout/Net/autoRLCNet.py" Arguments ="" PythonPath=""></SubMenu>

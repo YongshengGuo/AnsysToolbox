@@ -404,38 +404,43 @@ class ComplexDict(object):
         '''
         return self._dict
     
-    def updates(self,options):
+    def updates(self,dict2,copy=True):
         '''
         dict2 update to dict1, considered Multi-level dict keys, with deepcopy
         '''
-        options = ComplexDict(options) #map key should be consider
+        dict2 = ComplexDict(dict2) #map key should be consider
+        
+        copyMethod = deepcopy if copy else lambda x:x
         
         if not self.Dict:
-            self._dict = deepcopy(options._dict)
+            self._dict = copyMethod(dict2._dict)
         
-        for key in options.Keys:
+        for key in dict2.Keys:
             try:
                 val = self.get(key,default= "//key_not_found//") #val is dict or value
             except:
                 log.warning("key:%s not found in layer: %s"%(key,self.Name))
                 
             if val == "//key_not_found//": #not found
-                if isinstance(options[key], (dict,ComplexDict)):
-                    self.update(key, deepcopy(options._dict[key]))
+                if isinstance(dict2[key], (dict,ComplexDict)):
+                    self.update(key, copyMethod(dict2._dict[key]))
                 else:
-                    self.update(key,options[key])
+                    self.update(key,dict2[key])
             else:
                 if isinstance(val, (dict,ComplexDict)):
                     val2 = ComplexDict(val)
-                    val2.updates(options[key])
+                    val2.updates(dict2[key])
                     self[key] = val2.Dict
                 else:
-#                     log.debug(key,options[key])
-                    self[key] = options[key]
-#                     self.update(key, options[key])
+#                     log.debug(key,dict2[key])
+                    self[key] = dict2[key]
+#                     self.update(key, dict2[key])
                     
     def update(self,key,value):
         self._dict[key] = value
+        
+    def append(self,dict2):
+        self._dict.update(dict2._dict)
     
     def setMaps(self,maps):
         self.maps = maps

@@ -94,25 +94,25 @@ class Component(Primitive):
         
         #pins information will update when they used by self[]
         maps.update({"PinNames":{
-            "Key":"Name",
-            "Get":lambda k:self.layout.oEditor.GetComponentPins(self.name)
+            "Key":"self",
+            "Get":lambda s:s.layout.oEditor.GetComponentPins(s.name)
             }})
         
         #pins objects
         maps.update({"Pins":{
-            "Key":"Name",
-            "Get":lambda k:[self.layout.Pins[name] for name in self.layout.oEditor.GetComponentPins(self.name)]
+            "Key":"self",
+            "Get":lambda s:[s.layout.Pins[name] for name in s.layout.oEditor.GetComponentPins(s.name)]
             }})
         
         
         maps.update({"NetNames":{
-            "Key":"Name",
-            "Get":lambda k: list(set([self.layout.Pins[p].Net for p in self.layout.oEditor.GetComponentPins(self.name)]))
+            "Key":"self",
+            "Get":lambda s: list(set([s.layout.Pins[p].Net for p in s.layout.oEditor.GetComponentPins(s.name)]))
             }})
         
         maps.update({"Nets":{
-            "Key":"Name",
-            "Get":lambda k: [self.layout.Nets[name] for name in set([self.layout.Pins[p].Net for p in self.layout.oEditor.GetComponentPins(self.name)])]
+            "Key":"self",
+            "Get":lambda s: [s.layout.Nets[name] for name in set([s.layout.Pins[p].Net for p in s.layout.oEditor.GetComponentPins(s.name)])]
             }})
         
         self._info.setMaps(maps)

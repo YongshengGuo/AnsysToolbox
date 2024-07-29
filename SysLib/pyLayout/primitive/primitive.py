@@ -144,18 +144,22 @@ class Primitive(object):
         
         #change 20240703
         self._info.update("Name",self.name) #add name to Info, override name Properties
-#         self._info.update("self", self)
+        self._info.update("self", self)
         
         #for Polygon Object
         maps.update({"Polygon":{
-            "Key":"name", #should use name, not Name
-            "Get":lambda k: self.layout.oEditor.GetPolygon(k)
+            "Key":"self", #should use name, not Name
+            "Get":lambda s: s.layout.oEditor.GetPolygon(s.name)
             }})
         
         #for Polygon Object
+        def __area(self2):
+            polygon = self2.layout.oEditor.GetPolygon(self2.name)
+            return polygon.Area() if polygon else None
+        
         maps.update({"Area":{
-            "Key":"name",
-            "Get":lambda k: self.__area(k)
+            "Key":"self",
+            "Get":lambda s: __area(s)
             }})
         
         self.maps = maps
@@ -357,7 +361,18 @@ class Primitives(object):
         return len(self.ObjectDict)
     
     def __repr__(self):
-        return "%s Objects collection"%(self.type)
+        return "%s Objects collection: %s Objects"%(str(self.type),len(self.ObjectDict))
+    
+    def __add__(self,prim2):
+        if isinstance(prim2, Primitives):
+            _objectDict = ComplexDict()
+            _objectDict.append(self.ObjectDict)
+            _objectDict.append(prim2.ObjectDict)
+            primObject = Primitives(layout=self.layout,type="MixedObjects",primitiveClass=object)
+            primObject._objectDict = _objectDict
+            return primObject
+        else:
+            log.exception("Only Primitive Class can be __add__")
     
     @property
     def oProject(self):
@@ -542,48 +557,7 @@ class Primitives(object):
 class Objects3DL(Primitives):
 
     def __init__(self,layout=None,types=".*"):
-        self._objectDict = None #ComplexDict component buffer
-        self.layout = layout
-        self.types = types #str, list, regex
-            
-    def __getitem__(self, key):
-        """
-        key: str, regex, list, slice
-        """
-        
-        if isinstance(key, int):
-            return self.ObjectDict[key]
-        
-        if isinstance(key, slice):
-            return self.ObjectDict[key]
-        
-        if isinstance(key, str):
-            if key in self.ObjectDict:
-                return self.ObjectDict[key]
-            else:
-                #find by 正则表达式
-                lst = [name for name in self.ObjectDict.Keys if re.match(r"^%s$"%key,name,re.I)]
-                if not lst:
-                    raise Exception("not found component: %s"%key)
-                else:
-                    #如果找到多个器件（正则表达式），返回列表
-                    return self[lst]
-
-        if isinstance(key, (list,tuple,Iterable)):
-            return [self[i] for i in list(key)]
-    
-    def __getattr__(self,key):
-        if key in ['__get__','__set__']:
-            #just for debug run
-            return None
-        if key in ["layout","_objectDict","types"]:
-            return object.__getattr__(self,key)
-        else:
-            log.debug("__getattr__ from _dict: %s"%key)
-            return self[key]
-    
-    def __repr__(self):
-        return "%s Objects collection"%(str(self.types))
+        super(self.__class__,self).__init__(layout, type=types,primitiveClass=None)
 
     @property
     def ObjectDict(self):
@@ -595,38 +569,30 @@ class Objects3DL(Primitives):
         'Measurement', 'Port', 'Port Instance', 'Port Instance Port', 'Edge Port', 'component', 'CS', 'S3D', 'ViaGroup'
         '''
         types = []
-        if isinstance(self.types, str):
-            types = [self.types]
-        elif isinstance(self.types,(list,tuple)):
-            types = list(self.types)
+        if isinstance(self.type, str):
+            types = [self.type]
+        elif isinstance(self.type,(list,tuple)):
+            types = list(self.type)
         else:
-            log.exception("type error %s"%str(self.types))
+            log.exception("type error %s"%str(self.type))
         
         objTypes = []
         for t in types:
             for t2 in self.layout.primitiveTypes:
                 if re.match(r"^%s?$"%t,t2,re.I):
                     objTypes.append(t2)
-            
-            
-#             objTypes += [name for name in self.layout.objTypes if re.match(r"^%s?$"%t,name,re.I)]
-        
-        self.types = objTypes
+
         if len(objTypes)<1:
             return []
         
-        if self._objectDict is None:
-            self._objectDict = ComplexDict()
-            for typ in self.types:
-                try:
-                    objs = self.layout[typ+"s"]
-                except:
-                    log.exception("%s not in layout deifiniton"%typ)
-                
-                self._objectDict._dict.update(objs.ObjectDict._dict)
+        objects = None
+        for typ in objTypes:
+            try:
+                if objects == None:
+                    objects = self.layout[typ+"s"]
+                else:
+                    objects += self.layout[typ+"s"]
+            except:
+                log.exception("%s not in layout deifiniton"%typ)
 
-        return self._objectDict 
-    
-    
-    def refresh(self):
-        self._objectDict  = None
+        return objects

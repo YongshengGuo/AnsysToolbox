@@ -181,7 +181,7 @@ class Definition(object):
         else:
             _array = ArrayStruct([])
         
-#         self._info.update("self", self)    
+        self._info.update("self", self)    
         self._info.update("Name",self.name)
         self._info.update("Array", _array)
         
@@ -254,7 +254,7 @@ class Definitions(object):
         return len(self.DefinitionDict)
     
     def __repr__(self):
-        return "%s Objects Definitios:"%(self.type)
+        return "%s Definition Objects"%(self.type)
             
             
     @property

@@ -112,8 +112,8 @@ class Pin(Primitive):
             
         #pins information will update when they used by self[]
         maps.update({"IsSMTPad":{
-            "Key":"name",
-            "Get":lambda k: self._info["Start Layer"] == self._info["Stop Layer"]
+            "Key":"self",
+            "Get":lambda s: s._info["Start Layer"] == s._info["Stop Layer"]
             }})
         
         self._info.setMaps(maps)

@@ -70,23 +70,40 @@ class Variable(Definition):
         self._info.update("Array", _array)
 
         maps.update({"Value":{
-            "Key":"name",
-            "Get":lambda k: self.get(),
-            "Set":lambda k,v: self.set(v)
+            "Key":"self",
+            "Get":lambda s: s.get(),
+            "Set":lambda s,v: s.set(v)
+            }})
+        
+        maps.update({"EvalValue":{
+            "Key":"self",
+            "Get":lambda s: s.getEvalValue()
+            }})
+        
+        maps.update({"SIValue":{
+            "Key":"self",
+            "Get":lambda s: s.getSIValue()
             }})
         
         self._info.setMaps(maps)
-
+        self._info.update("self", self)
         self.parsed = True
     
-    
-#     @property
-#     def Value(self):
-#         return self.get()
-#     
-#     @Value.setter
-#     def Value(self,val):
-#         self.set(val)
+    def getEvalValue(self):
+        '''
+        Evaluated Value as string
+        '''
+        var = self.name
+        obj = self.layout.oProject if var.startswith("$") else self.layout.oDesign
+        return obj.GetPropEvaluatedValue("Variables/%s"%var)
+        
+    def getSIValue(self):
+        '''
+        Evaluated Value as string
+        '''
+        var = self.name
+        obj = self.layout.oProject if var.startswith("$") else self.layout.oDesign
+        return obj.GetPropSIValue("Variables/%s"%var)
     
     def set(self,val):    
         var = self.name
@@ -148,29 +165,62 @@ class Variables(Definitions):
     
 
     def add(self,var,val = 0):
-        if var in self.layout.oProject.GetVariables() + self.layout.oDesign.GetVariables():
-            log.debug("Return for variable exist: %s"%var)
-            return
         
         obj = self.layout.oProject if var.startswith("$") else self.layout.oDesign
-        obj.ChangeProperty(
-            [
-                "NAME:AllTabs",
+        if var in self.layout.oProject.GetVariables() + self.layout.oDesign.GetVariables():
+            log.info("change value for exist variable: %s"%var)
+            obj.ChangeProperty(
                 [
-                    "NAME:%s"%("ProjectVariableTab" if var.startswith("$") else "LocalVariableTab"),
+                    "NAME:AllTabs",
                     [
-                        "NAME:PropServers", 
-                        "%s"%("ProjectVariables" if var.startswith("$") else "LocalVariables")
-                    ],
-                    [
-                        "NAME:NewProps",
+                        "NAME:%s"%("ProjectVariableTab" if var.startswith("$") else "LocalVariableTab"),
                         [
-                            "NAME:%s"%var,
-                            "PropType:=", "VariableProp",
-                            "UserDef:=", True,
-                            "Value:=", "%s"%val
+                            "NAME:PropServers", 
+                            "%s"%("ProjectVariables" if var.startswith("$") else "LocalVariables")
+                        ],
+                        [
+                            "NAME:ChangedProps",
+                            [
+                                "NAME:%s"%var,
+                                "Value:=", "%s"%val
+                            ]
                         ]
                     ]
-                ]
-            ])
+                ])
+            
+            
+            
+        else:
+            log.info("add new variable: %s"%var)
+            obj.ChangeProperty(
+                [
+                    "NAME:AllTabs",
+                    [
+                        "NAME:%s"%("ProjectVariableTab" if var.startswith("$") else "LocalVariableTab"),
+                        [
+                            "NAME:PropServers", 
+                            "%s"%("ProjectVariables" if var.startswith("$") else "LocalVariables")
+                        ],
+                        [
+                            "NAME:NewProps",
+                            [
+                                "NAME:%s"%var,
+                                "PropType:=", "VariableProp",
+                                "UserDef:=", True,
+                                "Value:=", "%s"%val
+                            ]
+                        ]
+                    ]
+                ])
         self._definitionDict = None
+        return self.DefinitionDict[var]
+        
+    
+    def evalExpression(self,expression = 0):
+        if "Freq" in expression:
+            log.info("Eval the '%s' at frequency 1Ghz"%expression)
+            expression = expression.replace("Freq","1e9")
+        
+        var = self.add("EvalExpressionValue", expression)
+        return var.EvalValue
+        

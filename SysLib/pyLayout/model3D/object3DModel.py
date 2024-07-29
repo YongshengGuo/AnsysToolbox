@@ -103,6 +103,7 @@ class Object3DModle(object):
         self._info = ComplexDict()
         maps = self.maps
         self._info.update("Name",self.name) #add name to Info
+        self._info.update("self",self) #add name to Info
         
         #--- for BaseElementTab peoperty
         properties = self.app.oEditor.GetProperties("Geometry3DAttributeTab",self.name)
@@ -113,19 +114,19 @@ class Object3DModle(object):
                 maps.update({prop.replace(" ",""):prop}) #map property with space characters
         
         maps.update({"Vertexs":{
-                          "Key":"name",
-                          "Get": lambda v: self._getVertexsPositionDict(self.app.oEditor.GetVertexIDsFromObject(self.name))
+                          "Key":"self",
+                          "Get": lambda s: s._getVertexsPositionDict(s.app.oEditor.GetVertexIDsFromObject(s.name))
                           }})
         
         maps.update({"Faces":{
-                          "Key":"name",
-                          "Get": lambda v: self.app.oEditor.GetFaceIDs(self.name)
+                          "Key":"self",
+                          "Get": lambda s: s.app.oEditor.GetFaceIDs(s.name)
                           }})
 
         
         maps.update({"Edges":{
-                          "Key":"name",
-                          "Get": lambda v: self.app.oEditor.GetEdgeIDsFromObject(self.name)
+                          "Key":"self",
+                          "Get": lambda s: s.app.oEditor.GetEdgeIDsFromObject(s.name)
                           }})
         
         self._info.setMaps(maps)
@@ -279,6 +280,11 @@ class Objects3DModle(object):
     
     def __len__(self):
         return len(self.ObjectDict)
+    
+    @property
+    def Count(self):
+        return len(self)
+    
     
     @property
     def ObjectDict(self):

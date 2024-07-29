@@ -94,6 +94,54 @@ class Port(Primitive):
         
     def setSIwavePortRefNet(self,value):
         self.setProp("Reference Net", str(value))
+        
+        
+    def autoRename(self):
+        if "." in self.Name:
+            log.info("skip port: %s"%self.Name)
+            return
+            
+        ConnectionPoints = self.ConnectionPoints #0.000400 0.073049 Dir:270.000000 Layer: BOTTOM    
+        splits = ConnectionPoints.split() #['0.000400', '0.073049', 'Dir:270.000000', 'Layer:', 'BOTTOM']
+        X = float(splits[0])
+        Y = float(splits[1])
+        layer = splits[-1]
+        posObjs = list(self.layout.getObjectByPoint([X,Y],layer = layer,radius="2mil"))
+#         print(self.Name,posObjs,layer)
+        
+        if not posObjs:
+            log.info("Not found objects on port '%s' position, skip."%self.Name)
+            return
+
+        if self.Name in posObjs:
+            posObjs.remove(self.Name)
+            
+        if not posObjs:
+            log.info("Not found objects on port '%s' position, skip."%self.Name)
+            return
+#             
+#         posObj = posObjs[0]
+        posObj = None
+        for obj in posObjs:
+            if obj in self.layout.Pins:
+                posObj = obj
+                break
+            
+        if not posObj:
+            posObj = posObjs[0]
+            
+        if posObj in self.layout.Pins:   
+            tempList = list(posObj.split("-"))+[self.layout.Pins[posObj].Net]
+            newName = ".".join(tempList)
+    #         print(newName,port)
+            log.info("Rename %s to %s"%(self.Name,newName))
+            self.Port = newName
+        else:
+            newName = self.layout[posObj].Net
+            log.info("Rename %s to %s"%(self.Name,newName))
+            self.Port = newName
+        
+        
     
 class Ports(Primitives):
     

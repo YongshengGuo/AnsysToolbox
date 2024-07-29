@@ -75,6 +75,8 @@ from .common.common import *
 # from .common.common import log,isIronpython
 from .common.unit import Unit
 
+from .common.common import DisableAutoSave,ProcessTime
+
 class Layout(object):
     '''
     classdocs
@@ -199,6 +201,9 @@ class Layout(object):
 #         return object.__dir__(self)  + self.Props
         return dir(self.__class__) + list(self.__dict__.keys()) + self.Props
     
+    def __repr__(self):
+        return "%s Object"%self.__class__.__name__
+    
     @property
     def Info(self):
         return self._info
@@ -291,7 +296,7 @@ class Layout(object):
         oDesktop = self.oDesktop
         
 #         log.debug("AEDT:"+self.Version)
-        projectList = oDesktop.GetProjects()
+        projectList = oDesktop.GetProjectList()
         #for COM Compatibility, yongsheng guo #20240422
         if "ComObject" in str(type(projectList)):
             projectList = [projectList[i] for i in range(projectList.count)]
@@ -361,12 +366,8 @@ class Layout(object):
         self._info.update("EdbPath", os.path.join(self._info.projectDir,self._info.projectName+".aedb"))
         self._info.update("ResultsPath", os.path.join(self._info.projectDir,self._info.projectName+".aedtresults"))
         
-        #Veraion C:\Program Files\AnsysEM\v231\Win64
-        if self.version==None and self.installDir:
-            splits = re.split(r"[\\/]+",self.installDir)
-            ver1 = splits[-2] if splits[-1].strip() else splits[-3]
-            ver2 = ver1.replace(".","")[-3:]
-            self.version = "20%s.%s"%(ver2[0:2],ver2[2])
+        self._info.update("Version", self.oDesktop.GetVersion())
+        self._info.update("InstallDir", self.oDesktop.GetExeDir())
         
         
         #intial log
@@ -392,9 +393,9 @@ class Layout(object):
         self.enableICMode(False)
         
         if initLayout:
-            self.initLayout()
+            self.initObjects()
 
-    def initLayout(self):
+    def initObjects(self):
         
         info = self._info
         
@@ -430,6 +431,7 @@ class Layout(object):
 #         info.update("Primitives",Primitives(layout = self))
         info.update("unit",self.oEditor.GetActiveUnits())
         info.update("Version",self.oDesktop.GetVersion())
+        info.update("layout",self)
         
         #intial geometry definition
         Polygen.layout = self
@@ -565,7 +567,13 @@ class Layout(object):
         return Enabled
 
     #--- objects
+    def getPrimitiveObjects(self,types):
+        '''
+        type is list or regex
+        '''
+        return Objects3DL(layout = self,types=types)
     
+
     def getObjects(self,type="*"):
         '''
         "Type" to search by object type.
@@ -654,15 +662,44 @@ class Layout(object):
     
     #--- IO
     
-    def newDesign(self,newDesignName,newPorjectName = None):
-        if newPorjectName:
-            oProject = oDesktop.NewProject()
-            oProject.Rename(os.path.join(oProject.GetPath(),newPorjectName), True)
-            oProject.InsertDesign("HFSS 3D Layout Design", newDesignName, "", "")
-            self.initDesign(newPorjectName, newDesignName)
+    def newProject(self,projectName):
+        oProject = self.oDesktop.NewProject()
+        oProject.Rename(projectName, True)
+        return oProject
+    
+    
+    def newDesign(self,newDesignName,projectName = None):
+        if projectName:
+            oProject = self.oDesktop.SetActiveProject(projectName)
+            oProject.InsertDesign(self._toolType, newDesignName, "", "")
+            self.initDesign(projectName, newDesignName)
         else:
-            self.oProject.InsertDesign("HFSS 3D Layout Design", newDesignName, "", "")
+            self.oProject.InsertDesign(self._toolType, newDesignName, "", "")
             self.initDesign(self.projectName, newDesignName)
+            
+        return self.oDesign
+    
+    def deleteProject(self):
+        self.oDesktop.DeleteProject(self.ProjectName)
+        self._oProject = None
+        self._oDesign = None
+        self._oEditor = None
+    
+    def deleteDesign(self):
+        self.oProject.DeleteDesign(self.DesignName)
+        self._oDesign = None
+        self._oEditor = None
+    
+    
+#     def newDesign(self,newDesignName,newPorjectName = None):
+#         if newPorjectName:
+#             oProject = oDesktop.NewProject()
+#             oProject.Rename(os.path.join(oProject.GetPath(),newPorjectName), True)
+#             oProject.InsertDesign("HFSS 3D Layout Design", newDesignName, "", "")
+#             self.initDesign(newPorjectName, newDesignName)
+#         else:
+#             self.oProject.InsertDesign("HFSS 3D Layout Design", newDesignName, "", "")
+#             self.initDesign(self.projectName, newDesignName)
     
     def translateLayout(self,layoutPath,edbOutPath = None, controlFile = "", extractExePath = None, layoutType = None):
         
@@ -762,12 +799,12 @@ class Layout(object):
     def openAedt(self,path):
         log.info("OpenProject : %s"%path)
         self.oDesktop.OpenProject(path)
-        self.initDesign()
+        self.initDesign(projectName=os.path.splitext(os.path.basename(path))[0])
     
     def openArchive(self,archive,newPath):
         log.info("RestoreProjectArchive: %s"%archive)
         self.oDesktop.RestoreProjectArchive(archive, newPath, False, True) 
-        self.initDesign()
+        self.initDesign(projectName=os.path.splitext(os.path.basename(newPath))[0])
     
     def reload(self):
         aedtPath = self.ProjectPath
@@ -775,7 +812,7 @@ class Layout(object):
         self.oProject.Save()
         self.oProject.Close()
         self.oDesktop.OpenProject(aedtPath)
-        self.initDesign()
+        self.initDesign(projectName=os.path.splitext(os.path.basename(aedtPath))[0])
 
 
     def reloadEdb(self):
@@ -788,12 +825,12 @@ class Layout(object):
         if os.path.exists(aedtPath):
             os.remove(aedtPath)
         self.importEBD(edbPath)
-        self.initDesign()
+        self.initDesign(projectName=os.path.splitext(os.path.basename(aedtPath))[0])
 
     def saveAs(self,path,OverWrite=True):
         log.info("save As %s"%path)
         self.oProject.SaveAs(path, OverWrite)
-        self.initDesign()
+        self.initDesign(projectName=os.path.splitext(os.path.basename(path))[0])
 
     def save(self):
         log.info("Save project: %s"%self.ProjectPath)
@@ -813,7 +850,7 @@ class Layout(object):
             shutil.rmtree(self.resultsPath)
     
     @classmethod
-    def copyAs(cls,source,target):
+    def copyAEDT(cls,source,target):
         from shutil import copy
         #source = (source,source+".aedt")(".aedt" in source)
         if ".aedt" not in source:
