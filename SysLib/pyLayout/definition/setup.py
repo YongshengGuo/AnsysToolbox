@@ -360,6 +360,9 @@ class Setup(Definition):
                     netInfo.update({obj.name:net})
             else:
                 log.debug("Not found object on layout:%s"%obj.name)                 
+        
+        bar.stop()
+        
         hfss.groupbyNets(netInfo)
                 
         return hfss
@@ -427,7 +430,7 @@ class Setup(Definition):
                     netInfo.update({obj.name:net})
             else:
                 log.debug("Not found object on layout:%s"%obj.name)                 
-        
+        bar.stop()
         q3d.groupbyNets(netInfo)
                 
         return q3d

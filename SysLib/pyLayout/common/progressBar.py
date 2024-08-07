@@ -15,7 +15,6 @@ import re
 import os
 import sys
 import time
-import contextlib  # 引入上下文管理包
 from threading import Thread,Event
 
 class ProgressBar(object):
@@ -132,3 +131,14 @@ class ProgressBar(object):
         self.event.set()
         time.sleep(1) #wait for last log output
         print("{} finished.".format(self.prompt))
+
+
+def ShowProcessBar(prompt=""):
+    def wrapper(func):
+        def wrapped_function(*args, **kwargs):
+            bar = ProgressBar(prompt=prompt)
+            bar.showProgress()
+            return func(*args, **kwargs)
+            bar.stop()
+            return wrapped_function
+    return wrapper

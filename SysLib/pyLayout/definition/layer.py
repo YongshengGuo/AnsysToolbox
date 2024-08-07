@@ -49,6 +49,7 @@ from ..common.complexDict import ComplexDict
 from ..common.unit import Unit
 from ..common.common import log,loadCSV,writeCSV
 from .definition import Definitions,Definition
+from ..common.common import DisableAutoSave,ProcessTime
 
 
 class Layer(Definition):
@@ -299,19 +300,6 @@ class Layer(Definition):
         return 1 if idx<len(layerNames)/2.0 else 0
     
     
-#     def _getObjects(self):
-#         print(self.name)
-#         objectCDicts = ComplexDict()
-#         objsList = []
-#         for type in self.layout.primitiveTypes:
-#             objs = self.layout.getObjectsbyLayer(self.name,type)
-#             objectCDicts.update(type+"s", objs)
-#             objsList += objs
-#         objectCDicts.update("All",objsList)
-#         
-#         return objectCDicts
-    
-    
     def _getObjects(self):
         objectCDicts = ComplexDict()
         maps = {}
@@ -390,9 +378,6 @@ class Layer(Definition):
             if "DK" in info:
                 if "DF" not in info or not str(info["DF"]).strip(): #set df=0
                     layerDict["DF"] = 0
-#                 if "FillMaterial" not in info or not info["FillMaterial"].strip():
-#                     layerDict["FillMaterial"] = "DK%sDK%s"%(info["DK"],info["DF"])
-                
                 
                 #consider DK,df maybe not same with material in project, alway update #20240314
                 layerDict["FillMaterial"] = "DK%sDK%s"%(info["DK"],info["DF"])
@@ -401,11 +386,6 @@ class Layer(Definition):
                                                   "DF": info["DF"]
                                                   })
                 
-#                 if info["Material"] not in self.layout.Materials:
-#                     self.layout.Materials.add({"Name":info["Material"],
-#                                                       "DK": info["DK"],
-#                                                       "DF": info["DF"]
-#                                                       })
             elif "FillMaterial" in info and info["FillMaterial"].strip():
                 if info["FillMaterial"] not in self.layout.Materials:
                     log.exception("FillMaterial and DK/DF must have one to difinited on layer:%s"%info["Name"])
@@ -423,28 +403,23 @@ class Layer(Definition):
             if "DK" in info:
                 if "DF" not in info or not str(info["DF"]).strip(): #set df=0
                     layerDict["DF"] = 0
-#                 if "Material" not in info or not info["Material"].strip():
-#                     layerDict["Material"] = "DK%sDK%s"%(info["DK"],info["DF"])
+
+                #consider DK,df maybe not same with material in project, alway update #20240314
+                layerDict["Material"] = "DK%sDK%s"%(info["DK"],info["DF"])
+                self.layout.Materials.add({"Name":info["Material"],
+                                                  "DK": info["DK"],
+                                                  "DF": info["DF"]
+                                                  })
                 
-                
-                    #consider DK,df maybe not same with material in project, alway update #20240314
-                    layerDict["Material"] = "DK%sDK%s"%(info["DK"],info["DF"])
-                    self.layout.Materials.add({"Name":info["Material"],
-                                                      "DK": info["DK"],
-                                                      "DF": info["DF"]
-                                                      })
-                
-                elif "Material" in info and info["Material"].strip():
-                    if info["Material"] not in self.layout.Materials:
-                        log.exception("Material and DK/DF must have one to difinited on layer:%s"%info["Name"])
-                else:
-                    layerDict["FillMaterial"] = "FR4_epoxy"
+            elif "Material" in info and info["Material"].strip():
+                if info["Material"] not in self.layout.Materials:
+                    log.exception("Material and DK/DF must have one to difinited on layer:%s"%info["Name"])
+            else:
+                layerDict["FillMaterial"] = "FR4_epoxy"
                         
-                    
                 
-                
-                self.Info.updates(layerDict)
-                self.update()
+            self.Info.updates(layerDict)
+            self.update()
         
 
         else:
@@ -956,7 +931,8 @@ class Layers(Definitions):
             if not flag:
                 log.info("layer name: '%s' not found, ignore."% inputDict["Name"])   
     
-    
+    @ProcessTime
+    @DisableAutoSave
     def loadFromDict(self,layersInfo):
         '''
         强制更新,给定全部信息
@@ -975,7 +951,6 @@ class Layers(Definitions):
                 if "Cond" not in cpLayerDict:
                     layerDict["Material"] = "Copper"
             elif cpLayerDict["Type"].lower() in ["dielectric"] or cpLayerDict["Type"].lower().startswith("d"):
-                pass
                 if "DK" not in cpLayerDict:
                     layerDict["Material"] = "FR4_epoxy"
             else:

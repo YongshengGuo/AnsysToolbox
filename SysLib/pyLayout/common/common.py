@@ -331,7 +331,7 @@ def ProcessTime(func):
             tfun = time.time
             
         start = tfun()
-        return func(*args, **kwargs)
+        func(*args, **kwargs)
         end = tfun()
         
         log.info("{0}: Process time {1}s".format(func.__name__,end-start))
