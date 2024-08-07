@@ -128,7 +128,8 @@ class ProgressBar(object):
 #         thread.join()
         
     def stop(self):
-        self.event.set()
+        if self.event:
+            self.event.set()
         time.sleep(1) #wait for last log output
         print("{} finished.".format(self.prompt))
 
