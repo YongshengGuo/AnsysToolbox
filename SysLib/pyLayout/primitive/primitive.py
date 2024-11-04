@@ -110,9 +110,9 @@ class Primitive(object):
     def Name(self):
         return self.name
     
-    @property
-    def Type(self):
-        return self.getProp("Type")
+#     @property
+#     def Type(self):
+#         return self.getProp("Type")
     
     @property
     def Collection(self):
@@ -186,7 +186,7 @@ class Primitive(object):
         if not isinstance(key, str): #key must string
             log.exception("Property error: %s->%s"%(self.name,str(key)))
         
-        realKey = self._info.getReallyKey(key)
+        realKey = self._info.getReallyKey(key) #realKey for mapping
         if re.match(r"Pt(\d+|s)$",realKey,re.IGNORECASE) or realKey in ["Center","Pt A","Pt B","Location"]: 
             
             self._info.update(realKey,self.getPoint(realKey))
@@ -297,8 +297,16 @@ class Primitive(object):
   
 
     def delete(self):
+        
+        type = self.Type
+        
+        #for port objects, PlanarEM Type
+        if type in ["Circuit","Single Strip Gap Source"]: 
+            type = "Port"
+        
+        self.layout[type+"s"].pop(self.Name)
         self.layout.oEditor.Delete([self.Name])
-        self.layout[self.Type+"s"].pop(self.Name)
+        
 
     def update(self):
         self._info = None #delay update
@@ -313,6 +321,10 @@ class Primitives(object):
         self.layout = layout
         self.type = type
         self.primitiveClass = primitiveClass
+        
+#         #for port objects, PlanarEM Type
+#         if type in ["Circuit","Single Strip Gap Source"]: 
+#             self.type = "Port"
    
             
     def __getitem__(self, key):
@@ -339,7 +351,7 @@ class Primitives(object):
                     #如果找到多个器件（正则表达式），返回列表
                     return self[lst]
             else:
-                raise Exception("not found component: %s"%key)
+                raise Exception("not found %s: %s"%(self.type,key))
 
         if isinstance(key, (list,tuple,Iterable)):
             return [self[i] for i in list(key)]
@@ -398,9 +410,12 @@ class Primitives(object):
         '''
         
         if self._objectDict is None:
-            self._objectDict  = ComplexDict(dict([(p,self.primitiveClass(p,layout=self.layout)) for p in 
-                                self.layout.oEditor.FindObjects('Type', self.type)
-                                ]))
+            objs = self.layout.oEditor.FindObjects('Type', self.type)
+            if objs:
+                self._objectDict  = ComplexDict(dict([(p,self.primitiveClass(p,layout=self.layout)) for p in objs]))
+            else:
+                self._objectDict  = ComplexDict()
+                
         return self._objectDict 
     
     @property

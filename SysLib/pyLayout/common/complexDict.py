@@ -360,9 +360,21 @@ class ComplexDict(object):
         
     def __bool__(self):
         return bool(len(self._dict))
+#     
+#     def __dir__(self):
+#         return list(dir(self.__class__)) + list(self.__dict__.keys())  + list(self._dict.keys())
+    
     
     def __dir__(self):
-        return list(dir(self.__class__)) + list(self.__dict__.keys())  + list(self._dict.keys())
+        return list(dir(self.__class__)) + list(self.__dict__.keys()) + list(self.Props)
+
+    @property
+    def Props(self):
+        propKeys = list(self._dict.keys())
+        if self.maps:
+            propKeys += list(self.maps.keys())
+        
+        return propKeys
     
     @property
     def Values(self):
@@ -577,10 +589,16 @@ class ComplexDict(object):
         '''
         get key from maps or dict
         '''
+        if not isinstance(key, str): #isinstance(k, str) add 20240428 yongsheng Guo
+            return key
+        
         key2 = self.getMappingKeys(key)
         if key2 != "//key_not_found//":
             return key2
         else:
+            for k in self._dict:
+                if k.lower() == key.lower():
+                    return k
             return key
 
     def delKey(self,key):
@@ -607,19 +625,37 @@ class ComplexDict(object):
     def writeJosn(self,path):
         writeJson(path,self._dict)
     
-    
-    @classmethod
-    def loadConfig(cls,config):
+
+    def loadConfig(self,config):
+        
         if isinstance(config, str):
             #config path
-            return cls(path = config)
+            if os.path.exists(config):
+                self._dict = loadJson(config)
+            else:
+                raise Exception("dictData not found:%s"%config)
+  
         elif isinstance(config, dict):
             #dict options
-            return cls(dictData = config)
+            self._dict = config
             
         elif isinstance(config, ComplexDict):
-            return config
+            self._dict = config.Dict
         
         else:
             raise Exception("loadConfig: config must be path,dict or ComplexDict. %s"%str(config))
     
+#     @classmethod
+#     def load(cls,config):
+#         if isinstance(config, str):
+#             #config path
+#             return cls(path = config)
+#         elif isinstance(config, dict):
+#             #dict options
+#             return cls(dictData = config)
+#              
+#         elif isinstance(config, ComplexDict):
+#             return config
+#          
+#         else:
+#             raise Exception("loadConfig: config must be path,dict or ComplexDict. %s"%str(config))

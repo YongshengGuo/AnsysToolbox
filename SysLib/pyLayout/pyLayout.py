@@ -53,6 +53,7 @@ from .primitive.via import Vias
 #---library
 from .definition.padStack import PadStacks
 from .definition.componentLib import ComponentDefs
+from .definition.modelDef import ModelDefs
 from .definition.material import Materials
 #---natural
 from .definition.layer import Layers
@@ -124,7 +125,7 @@ class Layout(object):
         self._info.update("Maps", self.maps)
         
         if not isIronpython:
-            log.info("In cpython environment, pyaedt shold be install, install command: pip install pyaedt")
+            log.info("In cpython environment, pyaedt shold be installed, install command: pip install pyaedt")
 #             self._info.update("UsePyAedt", True)
         
         #----- 3D Layout object
@@ -202,7 +203,19 @@ class Layout(object):
         return dir(self.__class__) + list(self.__dict__.keys()) + self.Props
     
     def __repr__(self):
-        return "%s Object"%self.__class__.__name__
+        
+        temp = ""
+        if "ProjectName" in self._info:
+            temp += "Project: %s"%self._info["ProjectName" ]
+        else:
+            temp += "Project: %s"%"None"
+            
+        if "DesignName" in self._info:
+            temp += "Design: %s"%self._info["DesignName" ]
+        else:
+            temp += "Design: %s"%"None"
+        
+        return "%s Object: %s"%(self.__class__.__name__,temp)
     
     @property
     def Info(self):
@@ -220,7 +233,7 @@ class Layout(object):
         try:
             from pyaedt import launch_desktop
             log.info("try to initial oDesktop using PyLayout Lib... ")
-            self.PyAedtApp = launch_desktop(version = self.version,non_graphical=self.NonGraphical,new_desktop = False)
+            self.PyAedtApp = launch_desktop(version = self.version,non_graphical=self.NonGraphical,new_desktop = False,close_on_exit=False)
             self.UsePyAedt = True
             self._oDesktop = self.PyAedtApp.odesktop
             sys.modules["__main__"].oDesktop = self._oDesktop
@@ -269,6 +282,63 @@ class Layout(object):
             
         return self._oDesktop
     
+     
+    def initProject(self,projectName = None):
+        #layout properties initial
+        #----- 3D Layout object
+#         self._oDesktop = None
+        self._oProject = None
+#         self._oDesign = None
+#         self._oEditor = None
+        oDesktop = self.oDesktop
+         
+#         log.debug("AEDT:"+self.Version)
+        projectList = oDesktop.GetProjectList()
+        #for COM Compatibility, yongsheng guo #20240422
+        if "ComObject" in str(type(projectList)):
+            projectList = [projectList[i] for i in range(projectList.count)]
+             
+        if len(projectList)<1:
+#             log.error("Must have one project opened in aedt.")
+#             exit()
+#             log.error("Must have one project opened in aedt.")
+            log.warning("not found opened projects, insert new one.")
+            oProject = oDesktop.NewProject()
+            oProject.InsertDesign("HFSS 3D Layout Design", "Layout1", "", "")
+            self._oProject = oProject
+         
+        else:
+         
+            if projectName:
+    #             messageBox("projectName&designName")
+                if projectName not in projectList:
+                    log.error("project not in aedt.%s"%projectName)
+                    raise Exception("project not in aedt.%s"%projectName)
+                self._oProject = oDesktop.SetActiveProject(projectName)
+     
+            else:
+                self._oProject = oDesktop.GetActiveProject()
+                 
+                if not self._oProject:
+                    self._oProject = oDesktop.GetProjects()[0]
+                 
+        if not self._oProject:
+            log.error("Must have one project opened in aedt.")
+            raise Exception("Must have one project opened in aedt.")
+         
+        self._info.update("oProject",self._oProject)
+
+        self._info.update("ProjectName", self._oProject.GetName())
+        self._info.update("projectDir", self._oProject.GetPath())
+         
+        self._info.update("ProjectPath", os.path.join(self._info.projectDir,self._info.projectName+".aedt"))
+        self._info.update("ResultsPath", os.path.join(self._info.projectDir,self._info.projectName+".aedtresults"))
+        self._info.update("EdbPath", os.path.join(self._info.projectDir,self._info.projectName+".aedb"))
+ 
+        self._info.update("Version", self.oDesktop.GetVersion())
+        self._info.update("InstallDir", self.oDesktop.GetExeDir())
+        self._info.update("InstallPath", self.oDesktop.GetExeDir())
+    
     
     def initDesign(self,projectName = None,designName = None, initLayout = True):
         '''Try to intial project properties.
@@ -293,50 +363,62 @@ class Layout(object):
         self._oProject = None
         self._oDesign = None
         self._oEditor = None
-        oDesktop = self.oDesktop
+        self.initProject(projectName)
         
-#         log.debug("AEDT:"+self.Version)
-        projectList = oDesktop.GetProjectList()
-        #for COM Compatibility, yongsheng guo #20240422
-        if "ComObject" in str(type(projectList)):
-            projectList = [projectList[i] for i in range(projectList.count)]
-            
-        if len(projectList)<1:
+# #         log.debug("AEDT:"+self.Version)
+#         projectList = oDesktop.GetProjectList()
+#         #for COM Compatibility, yongsheng guo #20240422
+#         if "ComObject" in str(type(projectList)):
+#             projectList = [projectList[i] for i in range(projectList.count)]
+#             
+#         if len(projectList)<1:
+# #             log.error("Must have one project opened in aedt.")
+# #             exit()
+# #             log.error("Must have one project opened in aedt.")
+#             log.warning("not found opened projects, insert new one.")
+#             oProject = oDesktop.NewProject()
+#             oProject.InsertDesign("HFSS 3D Layout Design", "Layout1", "", "")
+#             self._oProject = oProject
+#         
+#         else:
+#         
+#             if projectName:
+#     #             messageBox("projectName&designName")
+#                 if projectName not in projectList:
+#                     log.error("project not in aedt.%s"%projectName)
+#                     raise Exception("project not in aedt.%s"%projectName)
+#                 self._oProject = oDesktop.SetActiveProject(projectName)
+#     
+#             else:
+#                 self._oProject = oDesktop.GetActiveProject()
+#                 
+#                 if not self._oProject:
+#                     self._oProject = oDesktop.GetProjects()[0]
+#                 
+#         if not self._oProject:
 #             log.error("Must have one project opened in aedt.")
-#             exit()
-#             log.error("Must have one project opened in aedt.")
-            log.warning("not found opened projects, insert new one.")
-            oProject = oDesktop.NewProject()
-            oProject.InsertDesign("HFSS 3D Layout Design", "Layout1", "", "")
-            self._oProject = oProject
+#             raise Exception("Must have one project opened in aedt.")
+#         
+#         self._info.update("oProject",self._oProject)
+#         self._info.update("ProjectName", self._oProject.GetName())
+#         self._info.update("projectDir", self._oProject.GetPath())
+#         self._info.update("ProjectPath", os.path.join(self._info.projectDir,self._info.projectName+".aedt"))
+#         self._info.update("EdbPath", os.path.join(self._info.projectDir,self._info.projectName+".aedb"))
+#         self._info.update("ResultsPath", os.path.join(self._info.projectDir,self._info.projectName+".aedtresults"))
+#         self._info.update("Version", self.oDesktop.GetVersion())
+#         self._info.update("InstallDir", self.oDesktop.GetExeDir())
         
-        else:
-        
-            if projectName:
-    #             messageBox("projectName&designName")
-                if projectName not in projectList:
-                    log.error("project not in aedt.%s"%projectName)
-                    raise Exception("project not in aedt.%s"%projectName)
-                self._oProject = oDesktop.SetActiveProject(projectName)
-    
-            else:
-                self._oProject = oDesktop.GetActiveProject()
-                
-                if not self._oProject:
-                    self._oProject = oDesktop.GetProjects()[0]
-                
-        if not self._oProject:
-            log.error("Must have one project opened in aedt.")
-            raise Exception("Must have one project opened in aedt.")
-        
-        self._info.update("oProject",self._oProject)
         
         designList = self.getDesignNames()
         if len(designList)<1:
+            log.error("Must have one design opened in project.")
+            self._info.update("oDesign",None)
+            self._info.update("oEditor",None)
+            self._info.update("DesignName", "")
 #             log.error("Must have one design opened in project.")
 #             raise Exception("Must have one design opened in project.")
-            self._oProject.InsertDesign("HFSS 3D Layout Design", "Layout1", "", "")
-            self._oDesign = self._oProject.SetActiveDesign(designName)
+#             self._oProject.InsertDesign("HFSS 3D Layout Design", "Layout1", "", "")
+#             self._oDesign = self._oProject.SetActiveDesign(designName)
         else:
         
             if designName:
@@ -350,50 +432,43 @@ class Layout(object):
                     log.info("try to get the first design")
                     self._oDesign = self._oProject.SetActiveDesign(designList[0])
                     
-        #make sure the design is 3DL
-        designtype = self._oDesign.GetDesignType()
-        if designtype != 'HFSS 3D Layout Design':
-            log.error("design type error, not 3D layout design.")
+                #make sure the design is 3DL
+                designtype = self._oDesign.GetDesignType()
+                if designtype != 'HFSS 3D Layout Design':
+                    log.exception("design type error, not 3D layout design.")  #exception if not 3DL design
+                    self._info.update("oDesign",None)
+                    self._info.update("oEditor",None)
+                    self._info.update("DesignName", "")
+                else:
+                    self._info.update("oDesign",self._oDesign)
+                    self._info.update("oEditor",self._oDesign.SetActiveEditor("Layout"))
+                    self._info.update("DesignName", self.getDesignName(self._oDesign))
+                    
+                #intial log with design
+                path = os.path.join(self._info.projectDir,"%s_%s.log"%(self._info.projectName,self._info.designName))
+                if self.UsePyAedt or "AedtLogger" in str(type(log.logger)):
+                    import logging
+                    fileHandler = log.logger.logger.handlers[0]
+                    fileHandler2 = logging.FileHandler(path)
+                    fileHandler.stream = fileHandler2.stream
+                    fileHandler.baseFilename = path
+                    log.logger.logger.removeHandler(fileHandler)
+                    log.logger.logger.addHandler(fileHandler)
+                    del fileHandler2
+                    del fileHandler
+                    
+                else:
+                    log.setPath(path)
+                    log.info("Simulation log recorded in: %s"%path)
+                
+                log.info("init design: %s : %s"%(self.projectName,self.designName))
+                    
 
-        self._info.update("oDesign",self._oDesign)
-        self._info.update("oEditor",self._oDesign.SetActiveEditor("Layout"))
-            
-        self._info.update("ProjectName", self._oProject.GetName())
-        self._info.update("DesignName", self.getDesignName(self._oDesign))
-        self._info.update("projectDir", self._oProject.GetPath())
-        
-        self._info.update("ProjectPath", os.path.join(self._info.projectDir,self._info.projectName+".aedt"))
-        self._info.update("EdbPath", os.path.join(self._info.projectDir,self._info.projectName+".aedb"))
-        self._info.update("ResultsPath", os.path.join(self._info.projectDir,self._info.projectName+".aedtresults"))
-        
-        self._info.update("Version", self.oDesktop.GetVersion())
-        self._info.update("InstallDir", self.oDesktop.GetExeDir())
-        
-        
-        #intial log
-        path = os.path.join(self._info.projectDir,"%s_%s.log"%(self._info.projectName,self._info.designName))
-        if self.UsePyAedt:
-            import logging
-            fileHandler = log.logger.logger.handlers[0]
-            fileHandler2 = logging.FileHandler(path)
-            fileHandler.stream = fileHandler2.stream
-            fileHandler.baseFilename = path
-            log.logger.logger.removeHandler(fileHandler)
-            log.logger.logger.addHandler(fileHandler)
-            del fileHandler2
-            del fileHandler
-            
-        else:
-            log.setPath(path)
-            log.info("Simulation log recorded in: %s"%path)
-        
-        log.info("init design: %s : %s"%(self.projectName,self.designName))
-        
-        #intial layout elements
-        self.enableICMode(False)
-        
-        if initLayout:
-            self.initObjects()
+                #intial layout elements
+                self.enableICMode(False)
+                
+                if initLayout and self._info.oEditor:
+                    self.initObjects()
 
     def initObjects(self):
         
@@ -427,6 +502,7 @@ class Layout(object):
         info.update("Solutions", Solutions(layout = self))
         info.update("PadStacks", PadStacks(layout = self))
         info.update("ComponentDefs", ComponentDefs(layout = self))
+        info.update("ModelDefs", ModelDefs(layout = self))
         
 #         info.update("Primitives",Primitives(layout = self))
         info.update("unit",self.oEditor.GetActiveUnits())
@@ -560,8 +636,10 @@ class Layout(object):
             return Enabled
         
         if flag:
+            log.info("Enable autosave.")
             self.oDesktop.EnableAutoSave(True)
         else:
+            log.info("Disenable autosave.")
             self.oDesktop.EnableAutoSave(False)
         
         return Enabled
@@ -662,9 +740,11 @@ class Layout(object):
     
     #--- IO
     
-    def newProject(self,projectName):
+    def newProject(self,projectName = None):
         oProject = self.oDesktop.NewProject()
-        oProject.Rename(projectName, True)
+        if projectName:
+            oProject.Rename(projectName, True)
+        self.initProject(projectName)
         return oProject
     
     
@@ -728,7 +808,7 @@ class Layout(object):
         
         return edbOutPath
     
-    def loadLayout(self,layoutPath ,edbOutPath = None,controlFile = "", layoutType = None):
+    def loadLayout(self,layoutPath ,edbOutPath = None,controlFile = "", layoutType = None, extractExePath = None):
         '''
         doc
         '''
@@ -754,10 +834,20 @@ class Layout(object):
             else:
                 raise Exception("Layout type must be specified")
         
+        if extractExePath:
+            if extractExePath[-4:].lower() == ".exe":
+                extractExePath = os.path.dirname(extractExePath)
+                
+            if extractExePath not in os.environ['PATH']:
+                split = ";" if 'nt' in os.name else ":"
+                os.environ['PATH'] = split.join([extractExePath,os.environ['PATH']])
+                log.debug(os.environ['PATH'])
+        
+        
         if layoutType.lower() == "aedt":
-            self.layout.openAedt(layoutPath)
+            self.openAedt(layoutPath)
         elif layoutType.lower() == "edb":
-            self.layout.importEBD(layoutPath)
+            self.importEBD(layoutPath)
         elif layoutType.lower() == "cadence":
             if not edbOutPath:
                 edbOutPath = layoutPath[:-4] + ".aedb"
@@ -796,7 +886,11 @@ class Layout(object):
         oTool.ImportExtracta(path, edbPath, controlFile)
         self.initDesign()
         
-    def openAedt(self,path):
+    def openAedt(self,path,unlock=False):
+        if unlock:
+            if os.path.exists(path[-4:]+"lock"):
+                os.remove(path)
+        
         log.info("OpenProject : %s"%path)
         self.oDesktop.OpenProject(path)
         self.initDesign(projectName=os.path.splitext(os.path.basename(path))[0])
@@ -829,6 +923,11 @@ class Layout(object):
 
     def saveAs(self,path,OverWrite=True):
         log.info("save As %s"%path)
+        
+        subDir = os.path.dirname(path)
+        if not os.path.exists(subDir):
+            os.makedirs(subDir)
+        
         self.oProject.SaveAs(path, OverWrite)
         self.initDesign(projectName=os.path.splitext(os.path.basename(path))[0])
 
@@ -848,6 +947,14 @@ class Layout(object):
         if os.path.exists(self.resultsPath):
             log.info("delete project from disk: %s"%self.resultsPath)
             shutil.rmtree(self.resultsPath)
+    
+    @classmethod
+    def quitAedt(cls):
+        Module = sys.modules['__main__']
+        if hasattr(Module, "oDesktop"):
+            oDesktop = getattr(Module, "oDesktop")
+            if oDesktop:
+                oDesktop.QuitApplication()
     
     @classmethod
     def copyAEDT(cls,source,target):
@@ -870,12 +977,13 @@ class Layout(object):
         copy(source,aedtTarget)
         
         edbSource = source[:-5]+".aedb" +"/edb.def"
-        edbTargetdir = aedtTarget[:-5]+".aedb"
-        
-        if not os.path.exists(edbTargetdir):
-            print("make dir: %s"%edbTargetdir)
-            os.mkdir(edbTargetdir)
-        copy(edbSource,edbTargetdir)
+        if os.path.exists(edbSource):
+            edbTargetdir = aedtTarget[:-5]+".aedb"
+            
+            if not os.path.exists(edbTargetdir):
+                print("make dir: %s"%edbTargetdir)
+                os.mkdir(edbTargetdir)
+            copy(edbSource,edbTargetdir)
         return aedtTarget
 
     #---analyze and job   
@@ -956,6 +1064,14 @@ class Layout(object):
         else:
             log.exception("Not running in batchmode")
     
+    def getRelPath(self,path):
+        
+        try:
+            relPath = os.path.relpath(path,self.ProjectDir)
+            return os.path.join("$PROJECTDIR",relPath)
+        except:
+            return path
+
     #---message  
 
     def message(self,msg,level = 0):

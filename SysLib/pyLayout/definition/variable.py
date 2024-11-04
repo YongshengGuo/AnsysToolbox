@@ -222,5 +222,5 @@ class Variables(Definitions):
             expression = expression.replace("Freq","1e9")
         
         var = self.add("EvalExpressionValue", expression)
-        return var.EvalValue
+        return var.SIValue
         

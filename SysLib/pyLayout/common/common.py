@@ -40,12 +40,26 @@ def readData(path):
         list: 返回文件所有行
     '''
     with open(path,'r') as f:
+        datas = f.read()
+        f.close()    
+        return datas    
+#     return data
+
+def readlines(path):
+    '''读取文本文件
+
+    Args:
+        path (str): 文本文件路径
+
+    Returns:
+        list: 返回文件所有行
+    '''
+    with open(path,'r') as f:
         line = "readData" 
         while(line):
             line = f.readline()
             yield line
-        f.close()        
-#     return data
+        f.close()     
 
 def writeData(data,path):
     '''写入文本文件
@@ -222,7 +236,10 @@ def update2Dict(dict1,dict2,ignorCase = True):
             
     return dict1
     
-    
+
+def getParent(path):
+    return os.path.abspath(os.path.join(path, os.pardir))
+
 def getFileList(path,reg = ".*"):
     '''列出给定目录下符合条件的文件路径
 

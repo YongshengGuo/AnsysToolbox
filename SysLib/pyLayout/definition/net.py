@@ -304,7 +304,11 @@ class Nets(Definitions):
         self.layout.oEditor.DeleteNets(netList)
         
         
-    def autoRLCnet(self,on = "C"):
+    def autoRLCnet(self,on = "R"):
+        '''
+        on: R or C or L or RC or RLC ... 
+        '''
+        
         for each in on:
             if "r" == each.lower():
                 reg = "R.*"

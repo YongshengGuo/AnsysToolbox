@@ -15,13 +15,15 @@
 		<SubMenu Type="MenuItem" Name="AutoXNet" ExecuteType="Python" Path="$UserLib/3DLayout/Net/autoRLCNet.py" Arguments ="" PythonPath=""></SubMenu>
 	</SubMenu>
 	<SubMenu Name="Component" DesignType="3DLayout">
-		<SubMenu Type="MenuItem" Name="deleteInvalidRLC" ExecuteType="Python" Path="$UserLib/3DLayout/component/deleteInvalidRLC.py" Arguments ="" PythonPath=""></SubMenu>
+		<SubMenu Type="MenuItem" Name="deleteInvalidRLC(&lt;2Pins)" ExecuteType="Python" Path="$UserLib/3DLayout/component/deleteInvalidRLC.py" Arguments ="" PythonPath=""></SubMenu>
+		<SubMenu Type="MenuItem" Name="deleteInvalidComponents(&lt;2Pins)" ExecuteType="Python" Path="$UserLib/3DLayout/component/deleteInvalidComponents.py" Arguments ="" PythonPath=""></SubMenu>
 	</SubMenu>
 	<SubMenu Name="Via" DesignType="3DLayout">
 		<SubMenu Type="MenuItem" Name="autoBackdrill" ExecuteType="IronPython" Path="$UserLib/3DLayout/Via/autoBackdrill.py" Arguments ="" PythonPath=""></SubMenu>
 	</SubMenu>
 	<SubMenu Name="Port" DesignType="3DLayout">
 		<SubMenu Type="MenuItem" Name="RenameEdgePort" ExecuteType="Python" Path="$UserLib/3DLayout/Port/nameEdgePort.py" Arguments ="" PythonPath=""></SubMenu>
+		<SubMenu Type="MenuItem" Name="orderPorts" ExecuteType="Python" Path="$UserLib/3DLayout/Port/orderPorts.py" Arguments ="" PythonPath=""></SubMenu>
 	</SubMenu>
 	<SubMenu Type="Separator"/>
 	<SubMenu Name="Close">

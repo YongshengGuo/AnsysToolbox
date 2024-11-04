@@ -315,9 +315,6 @@ class Setup(Definition):
                 break
             time.sleep(2) #sleep 1s
             i += 2
-            
-#             if i%5 == 0:
-#                 log.info("Export to hfss 3D project ... : %ss"%i)
         bar.stop()
         if i>=timeout:
             log.exception("time out (>30 mins), Execution interrupt... .")
@@ -343,22 +340,32 @@ class Setup(Definition):
                 log.debug("%s is dielectric object, skip."%obj.name)
                 continue
             
-            pt0 = ["%s%s"%(x,unit) for x in  obj.Vertexs[0]]
-            layer = self.layout.layers.getLayerByHeight(pt0[2])
-            layoutObjs = self.layout.getObjectByPoint([pt0[0],pt0[1]],layer=layer)
-            if layoutObjs:
-                net = None
-                for obj2 in layoutObjs:
-                    if "Net" in  self.layout[obj2].Props:
-                        net = self.layout[obj2].Net
-                        break
+            flag = 1
+            #20240821 try all vertex for net
+            for vertex in obj.Vertexs:
+                pt0 = ["%s%s"%(x,unit) for x in  vertex]
+                layer = self.layout.layers.getLayerByHeight(pt0[2])
+                layoutObjs = self.layout.getObjectByPoint([pt0[0],pt0[1]],layer=layer)
+                if layoutObjs:
+                    net = None
+                    for obj2 in layoutObjs:
+                        try:
+                            element = self.layout[obj2]
+                        except:
+                            continue
+                        
+                        if "Net" in  element.Props:
+                            net = element.Net
+                            break
+                        else:
+                            continue
+                    if not net:
+                        log.error("\nobj %s not found."%obj2)
                     else:
-                        continue
-                if not net:
-                    log.error("\nobj %s not found."%obj2)
-                else:
-                    netInfo.update({obj.name:net})
-            else:
+                        netInfo.update({obj.name:net})
+                        flag = 0
+                        break
+            if flag:
                 log.debug("Not found object on layout:%s"%obj.name)                 
         
         bar.stop()
@@ -413,26 +420,37 @@ class Setup(Definition):
                 log.debug("%s is dielectric object, skip."%obj.name)
                 continue
             
-            pt0 = ["%s%s"%(x,unit) for x in  obj.Vertexs[0]]
-            layer = self.layout.layers.getLayerByHeight(pt0[2])
-            layoutObjs = self.layout.getObjectByPoint([pt0[0],pt0[1]],layer=layer)
-            if layoutObjs:
-                net = None
-                for obj2 in layoutObjs:
-                    if "Net" in  self.layout[obj2].Props:
-                        net = self.layout[obj2].Net
-                        break
+            flag = 1
+            #20240821 try all vertex for net
+            for vertex in obj.Vertexs:
+                pt0 = ["%s%s"%(x,unit) for x in  vertex]
+                layer = self.layout.layers.getLayerByHeight(pt0[2])
+                layoutObjs = self.layout.getObjectByPoint([pt0[0],pt0[1]],layer=layer)
+                if layoutObjs:
+                    net = None
+                    for obj2 in layoutObjs:
+                        try:
+                            element = self.layout[obj2]
+                        except:
+                            continue
+                        
+                        if "Net" in  element.Props:
+                            net = element.Net
+                            break
+                        else:
+                            continue
+                    if not net:
+                        log.error("\nobj %s not found."%obj2)
                     else:
-                        continue
-                if not net:
-                    log.error("\nobj %s not found."%obj2)
-                else:
-                    netInfo.update({obj.name:net})
-            else:
-                log.debug("Not found object on layout:%s"%obj.name)                 
+                        netInfo.update({obj.name:net})
+                        flag = 0
+                        break
+            if flag:
+                log.debug("Not found object on layout:%s"%obj.name)                      
+                
+                 
         bar.stop()
         q3d.groupbyNets(netInfo)
-                
         return q3d
     
     
@@ -448,9 +466,6 @@ class Setup(Definition):
         maxwell.oEditor.Paste()
         q3d.deleteDesign()
         log.info("Finished to export 3D Layout design to  Maxwell.")
-        
-        
-        
         
     
     #--- mesh

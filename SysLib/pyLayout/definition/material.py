@@ -120,7 +120,7 @@ class Material(Definition):
         #1e-12+2.84472e-12*Freq*(atan(Freq/70403)-atan(Freq/1.59155e+11))
         try:
             evalValue = self.layout.Variables.evalExpression(self.conductivity)
-            evalValue = self.layout.Variables.EvalExpressionValue.SIValue
+#             evalValue = self.layout.Variables.EvalExpressionValue.SIValue
             if float(evalValue) < 10000:
                 return False
             else:

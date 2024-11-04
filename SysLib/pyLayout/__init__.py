@@ -19,6 +19,7 @@ from .definition.componentLib import ComponentDef
 from .layoutOptions import options
 from .postData.solution import Solutions
 
+from .model3D.HFSS import Aedt3DToolBase
 from .model3D.HFSS import HFSS
 from .model3D.Q3D import Q3D
 from .model3D.maxwell import Maxwell
@@ -27,6 +28,7 @@ from .model3D.icepak import Icepak
 ##log is a globle variable
 from .common.common import log,isIronpython
 from .common.progressBar import ProgressBar
+from .common.xlsReader import XlsReader
 
 from .pyLayout import Layout
 

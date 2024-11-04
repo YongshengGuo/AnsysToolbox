@@ -10,10 +10,7 @@ import time
 
 from ..desktop import initializeDesktop,releaseDesktop
 
-#---library
-from ..definition.padStack import PadStacks
-from ..definition.componentLib import ComponentDefs
-from ..definition.material import Materials
+
 #---natural
 from ..definition.setup import Setups
 from ..definition.variable import Variables
@@ -23,14 +20,12 @@ from ..postData.solution import Solutions
 from ..common.complexDict import ComplexDict
 from ..common.arrayStruct import ArrayStruct
 
-from .object3DModel import Objects3DModle
-
 # from .lib.common.common import *
 from ..common.common import log,isIronpython #log is a globle variable
 from ..common.unit import Unit
 from ..common.common import DisableAutoSave,ProcessTime
 
-class Aedt3DToolBase(object):
+class Circuit(object):
     '''
     classdocs
     '''
@@ -40,7 +35,7 @@ class Aedt3DToolBase(object):
         "Ver":"Version",
         }
     
-    def __init__(self,toolType=None, version=None, installDir=None,nonGraphical=False):
+    def __init__(self,version=None, installDir=None,nonGraphical=False):
         '''
         初始化PyLayout对象环境
         
@@ -77,7 +72,7 @@ class Aedt3DToolBase(object):
         self._oProject = None
         self._oDesign = None
         self._oEditor = None
-        self._toolType = toolType
+        self._toolType = "Circuit Design"
         
     def __del__(self):
 #         self._oDesktop = None
@@ -211,7 +206,6 @@ class Aedt3DToolBase(object):
             
         return self._oDesktop
     
-    
     def initProject(self,projectName = None):
         #layout properties initial
         #----- 3D Layout object
@@ -268,7 +262,8 @@ class Aedt3DToolBase(object):
         self._info.update("InstallDir", self.oDesktop.GetExeDir())
         self._info.update("InstallPath", self.oDesktop.GetExeDir())
     
-    def initDesign(self,projectName = None,designName = None, initObjects = True):
+    
+    def initDesign(self,projectName = None,designName = None, initLayout = True):
         '''Try to intial project properties.
         
         AEDT must have on project and design opened.
@@ -291,68 +286,70 @@ class Aedt3DToolBase(object):
         self._oProject = None
         self._oDesign = None
         self._oEditor = None
-#         oDesktop = self.oDesktop
-        
         self.initProject(projectName)
 
-        #--- getDesignNames
-        designList = self._oProject.GetTopDesignList()
+        designList = self.getDesignNames()
         if len(designList)<1:
             log.error("Must have one design opened in project.")
             self._info.update("oDesign",None)
             self._info.update("oEditor",None)
             self._info.update("DesignName", "")
-
+#             log.error("Must have one design opened in project.")
+#             raise Exception("Must have one design opened in project.")
+#             self._oProject.InsertDesign("HFSS 3D Layout Design", "Layout1", "", "")
+#             self._oDesign = self._oProject.SetActiveDesign(designName)
         else:
         
             if designName:
                 if designName not in designList:
                     log.error("design not in project.%s"%designName)
                     raise Exception("design not in project.%s"%designName)
-#                 self._oDesign = self._oProject.SetActiveDesign(designName)
+                self._oDesign = self._oProject.SetActiveDesign(designName)
             else:
                 self._oDesign = self._oProject.GetActiveDesign()
                 if not self._oDesign:
                     log.info("try to get the first design")
                     self._oDesign = self._oProject.SetActiveDesign(designList[0])
                     
-            
-            #design type
-            if self._toolType:
-                designtype = self._toolType
-            else:
+                #make sure the design is 3DL
                 designtype = self._oDesign.GetDesignType()
-            
-            log.info("design type:%s"%designtype)  #exception if not 3DL design
-#             if designtype == 'HFSS 3D Layout Design':
-#                 self._info.update("oDesign",self._oDesign)
-#                 self._info.update("oEditor",self._oDesign.SetActiveEditor("Layout"))
-#                 self._info.update("DesignName", self.getDesignName(self._oDesign))
-#             else:
-#                 self._info.update("oDesign",None)
-#                 self._info.update("oEditor",None)
-#                 self._info.update("DesignName", "")
-            
-            if designtype != self._toolType:
-                log.error("design type %s not match with input type,  %s."% (designtype, str(self._toolType)))
-            
-            self._info.update("oDesign",self._oDesign)
-            self._info.update("DesignName", self.getDesignName(self._oDesign))
-            
-            if designtype == 'HFSS 3D Layout Design':
-                self._info.update("oDesign",self._oDesign)
-                self._info.update("oEditor",self._oDesign.SetActiveEditor("Layout"))
-                self._info.update("DesignName", self.getDesignName(self._oDesign))
-            else:
-                self._info.update("oDesign",self._oDesign)
-                self._info.update("oEditor",self._oDesign.SetActiveEditor("3D Modeler"))
-                self._info.update("DesignName", self.getDesignName(self._oDesign))
+                if designtype != 'HFSS 3D Layout Design':
+                    log.exception("design type error, not 3D layout design.")  #exception if not 3DL design
+                    self._info.update("oDesign",None)
+                    self._info.update("oEditor",None)
+                    self._info.update("DesignName", "")
+                else:
+                    self._info.update("oDesign",self._oDesign)
+                    self._info.update("oEditor",self._oDesign.SetActiveEditor("Layout"))
+                    self._info.update("DesignName", self.getDesignName(self._oDesign))
+                    
+                #intial log with design
+                path = os.path.join(self._info.projectDir,"%s_%s.log"%(self._info.projectName,self._info.designName))
+                if self.UsePyAedt or "AedtLogger" in str(type(log.logger)):
+                    import logging
+                    fileHandler = log.logger.logger.handlers[0]
+                    fileHandler2 = logging.FileHandler(path)
+                    fileHandler.stream = fileHandler2.stream
+                    fileHandler.baseFilename = path
+                    log.logger.logger.removeHandler(fileHandler)
+                    log.logger.logger.addHandler(fileHandler)
+                    del fileHandler2
+                    del fileHandler
+                    
+                else:
+                    log.setPath(path)
+                    log.info("Simulation log recorded in: %s"%path)
+                
+                log.info("init design: %s : %s"%(self.projectName,self.designName))
+                    
 
-            #initObjects
-            if initObjects and designtype != 'HFSS 3D Layout Design':
-                self.initObjects()
-
-
+                #intial layout elements
+                self.enableICMode(False)
+                
+                if initLayout and self._info.oEditor:
+                    self.initObjects()
+ 
+ 
     def initObjects(self):
         
         info = self._info
@@ -403,18 +400,11 @@ class Aedt3DToolBase(object):
  
  
     
-#     def getDesignName(self,oDesign):
-#         return oDesign.GetName()
-#     
-#     def getDesignNames(self):
-#         return [name for name in self._oProject.GetTopDesignList()]  
-             
     def getDesignName(self,oDesign):
-        return oDesign.GetName().split(';')[-1]
+        return oDesign.GetName()
     
     def getDesignNames(self):
-        return [name.split(';')[-1] for name in self._oProject.GetTopDesignList()]       
-             
+        return [name for name in self._oProject.GetTopDesignList()]  
                 
     #--- design
         
@@ -431,75 +421,6 @@ class Aedt3DToolBase(object):
         
         return Enabled
     
-    @ProcessTime
-    @DisableAutoSave
-    def groupbyNets(self,netInfo):
-        '''
-        netInfo: {objName:net}
-        '''
-#         netInfo = ComplexDict(netInfo)
-        netDict = {}
-        for obj in self.Objects.NameList:
-            if obj in netInfo:
-                net = netInfo[obj]
-                if net in netDict:
-                    netDict[net].append(obj)
-                else:
-                    netDict[net] = [obj]
-            else:
-                log.debug("skip group object:%s"%obj)
-        i = 1
-        n = len(netDict)
-        for net in netDict:
-            #group name: Valid characters are letters, numbers, underscores
-            group = re.sub(r"\W","_",net) #match [^a-zA-Z0-9]
-            log.info(("Add net Gruop: %s"%net).ljust(50,"-") + "%s/%s"%(i,n))
-            self.add2Group(group, netDict[net])
-            i = i+1
-    
-    def add2Group(self,group,objs):
-        if isinstance(objs, str):
-            objs = [objs]
-        else:
-            objs = list(objs)
-        
-        if group in self.oEditor.GetChildNames("Groups"):
-            log.debug("Add %s to group %s"%(",".join(objs),group))
-            self.oEditor.MoveEntityToGroup(
-                [
-                    "Objects:="        , objs
-                ], 
-                [
-                    "ParentGroup:="        , group
-                ])
-        else:
-            self.createGroup(group, objs)
-
-     
-    def createGroup(self,group,objs=[]): 
-        groupTemp = self.oEditor.GetChildNames("Groups")
-        log.debug("Create group %s and add  %s"%(group,",".join(objs)))
-        self.oEditor.CreateGroup(
-            [
-                "NAME:GroupParameter",
-                "ParentGroupID:="    , "Model",
-                "Parts:="        , ",".join(objs),
-                "SubmodelInstances:="    , "",
-                "Groups:="        , group #group name not work
-            ])
-        
-        group2 = self.oEditor.GetChildNames("Groups")
-        
-        #get new group name
-        newGroup = list(set(group2).difference(groupTemp))
-        if newGroup:
-            self.oEditor.SetPropertyValue("Attributes",newGroup[0],"Name",group)
-            return newGroup[0]
-        else:
-            log.exception("Group create error: %s"%group)
-        
-        
-
     def setUnit(self, unit = "um"):
         #return old unit
         self.oEditor.SetModelUnits(
@@ -586,46 +507,6 @@ class Aedt3DToolBase(object):
             log.info("delete project from disk: %s"%self.resultsPath)
             shutil.rmtree(self.resultsPath)
 
-    
-    @classmethod
-    def quitAedt(cls):
-        Module = sys.modules['__main__']
-        if hasattr(Module, "oDesktop"):
-            oDesktop = getattr(Module, "oDesktop")
-            if oDesktop:
-                oDesktop.QuitApplication()
-    
-    @classmethod
-    def copyAEDT(cls,source,target):
-        from shutil import copy
-        #source = (source,source+".aedt")(".aedt" in source)
-        if ".aedt" not in source:
-            print("source must .aedt file: %s"%source)
-            return
-        if not os.path.exists(source):
-            print("source file not found: %s"%source)
-            return
-        
-        
-        aedtTarget = (target+".aedt",target)[".aedt" in target]
-        aedtTargetDir = os.path.dirname(aedtTarget)
-        if not os.path.exists(aedtTargetDir):
-            print("make dir: %s"%aedtTargetDir)
-            os.mkdir(aedtTargetDir)
-        
-        copy(source,aedtTarget)
-        
-        edbSource = source[:-5]+".aedb" +"/edb.def"
-        if os.path.exists(edbSource):
-            edbTargetdir = aedtTarget[:-5]+".aedb"
-            
-            if not os.path.exists(edbTargetdir):
-                print("make dir: %s"%edbTargetdir)
-                os.mkdir(edbTargetdir)
-            copy(edbSource,edbTargetdir)
-        return aedtTarget
-
-
     #---message and job   
     def submitJob(self,host="localhost",cores=20):
         installPath = self.oDesktop.GetExeDir()
@@ -642,28 +523,6 @@ class Aedt3DToolBase(object):
         log.info(cmd)
         os.system(cmd)
         return jobId
-
-
-    @classmethod
-    def isBatchMode(cls):
-        Module = sys.modules['__main__']
-        return hasattr(Module, "ScriptArgument")
-    
-    @classmethod
-    def getScriptArgument(cls):
-        Module = sys.modules['__main__']
-        if hasattr(Module, "ScriptArgument"):
-            return getattr(Module, "ScriptArgument")
-        else:
-            log.exception("Not running in batchmode")
-    
-    def getRelPath(self,path):
-        
-        try:
-            relPath = os.path.relpath(path,self.ProjectDir)
-            return os.path.join("$PROJECTDIR",relPath)
-        except:
-            return path
 
 
     def release(self):

@@ -99,8 +99,8 @@ class Layer(Definition):
         "Roughness":{"Key":("Roughness0","BottomRoughness0","SideRoughness0"),"Get": lambda T,B,S: T,"Set": lambda x: [x]*3},
         "RoughnessType":{"Key":("Roughness0 Type","BottomRoughness0 Type","SideRoughness0 Type"),"Get": lambda T,B,S: T,"Set": lambda x: [x]*3},
         }
-
-
+    
+    _enableUpdate = True
 
     def __init__(self, name = None,array = None,layout = None):
         super(self.__class__,self).__init__(name,type="Layer",layout=layout)
@@ -111,7 +111,7 @@ class Layer(Definition):
         self.Info[key] = value
             
         if self.autoUpdate:
-            log.debug("layer auto update :%s."%self.name)
+            log.debug("layer '%s' auto update :%s->%s."%(self.name,key,value))
             self.update()
 
 
@@ -124,8 +124,8 @@ class Layer(Definition):
         if self.Info["Type"].lower() in ["signal","conductor"]:
             ary = ArrayStruct(hfss3DLParameters.signalLayer).copy()
             ary["Name"] = self.name
-            ary["ID"] = self.Info["LayerId"]
-            ary["Color"] = self.Info["Color"]
+            ary["ID"] = int(self.Info["LayerId"])
+            ary["Color"] = int(self.Info["Color"].replace("d",""))
             
             #20231020
             #ary["VisFlag"] = 127 if self.Info["IsVisible"] else 0
@@ -167,8 +167,8 @@ class Layer(Definition):
         elif self.Info["Type"].lower()  == "dielectric":
             ary = ArrayStruct(hfss3DLParameters.dielectricLayer).copy()
             ary["Name"] = self.name
-            ary["ID"] = self.Info["LayerId"]
-            ary["Color"] = self.Info["Color"]
+            ary["ID"] = int(self.Info["LayerId"])
+            ary["Color"] = int(self.Info["Color"].replace("d",""))
             ary["VisFlag"] = 127 if self.Info["IsVisible"] else 0
             ary["Sublayer/Thickness"] = self.Info["Thickness"]
             ary["Sublayer/LowerElevation"] = self.Info["LowerElevation"]
@@ -178,14 +178,13 @@ class Layer(Definition):
         else:
             ary = ArrayStruct(hfss3DLParameters.otherLayer).copy()
             ary["Name"] = self.name
-            ary["ID"] = self.Info["LayerId"]
-            ary["Color"] = self.Info["Color"]
+            ary["ID"] = int(self.Info["LayerId"])
+            ary["Color"] = int(self.Info["Color"].replace("d",""))
             ary["Type"] = self.Info["Type"]
             ary["VisFlag"] = 127 if self.Info["IsVisible"] else 0
         
         return ary.Datas
         
-#     @property
 #     def XML(self):
 #         '''
 #         layer:
@@ -324,10 +323,17 @@ class Layer(Definition):
     def getObjectsbyLayer(self,typ = "*"):
         return self.layout.getObjectsbyLayer(self.Name,typ)
     
+    
+    def enableUpdate(self,enable = True):
+        self.__class__._enableUpdate = enable
+    
     def update(self):
-        self.layout.oEditor.ChangeLayer(self.ArrayDatas)
-#         self._info = None
-        self.parse()
+        
+        if self.__class__._enableUpdate:
+            self.layout.oEditor.ChangeLayer(self.ArrayDatas)
+            self.parse()
+        else:
+            log.debug("layer '%s' update is disabled."%self.name)
         
     def setData(self,layerDict):
         '''
@@ -354,7 +360,7 @@ class Layer(Definition):
         
         if self["Type"].lower() in ["signal","conductor"]:
         
-            if "Roughness" in info:
+            if "Roughness" in info and info["Roughness"]:
                 Roughness = info["Roughness"]
                 RoughnessType = "Huray" if len(Roughness.split(",")) == 2 else "Groiss"
                 layerDict["UseR"] = True
@@ -365,7 +371,7 @@ class Layer(Definition):
                 layerDict["SideRoughnessType"] = RoughnessType
                 layerDict["SideRoughness"] = Roughness
             
-            if "Cond" in info:
+            if "Cond" in info  and info["Cond"]:
                 if "Material" not in info or not info["Material"].strip():
                     layerDict["Material"] = "Cond_%s"%str(info["Cond"])
                 if info["Material"] not in self.layout.Materials:
@@ -375,8 +381,8 @@ class Layer(Definition):
 
                     
             #if DK,DF have value, it will have higher priority the materail in definitions
-            if "DK" in info:
-                if "DF" not in info or not str(info["DF"]).strip(): #set df=0
+            if "DK" in info and info["DK"]:
+                if "DF" not in info or not info["DF"]: #set df=0
                     layerDict["DF"] = 0
                 
                 #consider DK,df maybe not same with material in project, alway update #20240314
@@ -386,14 +392,11 @@ class Layer(Definition):
                                                   "DF": info["DF"]
                                                   })
                 
-            elif "FillMaterial" in info and info["FillMaterial"].strip():
+            elif "FillMaterial" in info and info["FillMaterial"]:
                 if info["FillMaterial"] not in self.layout.Materials:
                     log.exception("FillMaterial and DK/DF must have one to difinited on layer:%s"%info["Name"])
             else:
                 layerDict["FillMaterial"] = "FR4_epoxy"
-                    
-                    
-                    
                     
             self.Info.updates(layerDict)
             self.update()
@@ -560,15 +563,9 @@ class Layer(Definition):
 
 class Layers(Definitions):
 
-#     def __init__(self, layout = None ):
-# 
-#         self._definitionDict = None
-#         self.layout = layout
-#         self.layerRefresh = True
         
     def __init__(self,layout=None):
         super(self.__class__,self).__init__(layout, type="Layer",definitionCalss=Layer)
-        self.layerRefresh = True
         
 
     def __getitem__(self, key):
@@ -625,18 +622,13 @@ class Layers(Definitions):
     
     
     def refresh(self):
-        
-        #layer data with right LowerElevation, set layerRefresh to false
-        if not self.layerRefresh:
-            return
-        
         self._definitionDict = None
         #re-calculate LowerElevation0 for add or delete layer
-        elevation = Unit(0)
-        for layerName in self.LayerNames[::-1]:
-            layer = self.DefinitionDict[layerName]
-            layer.LowerElevation = elevation[self.layout.unit]
-            elevation += Unit(layer.Thickness)
+#         elevation = Unit(0)
+#         for layerName in self.LayerNames[::-1]:
+#             layer = self.DefinitionDict[layerName]
+#             layer.LowerElevation = elevation[self.layout.unit]
+#             elevation += Unit(layer.Thickness)
 
     def getLayer(self,key):
         '''
@@ -783,6 +775,60 @@ class Layers(Definitions):
         if refresh:
             self.refresh()
     
+#     def _quickUpdateLayers(self,layersInfo):
+#         '''
+#         layersInfo with all layer datas, layer height must give 
+#         '''
+#         condLayersInfo = [layer for layer in layersInfo if ComplexDict(layer)["Type"].lower() in ["signal","conductor"]]
+#         dielectricLayersInfo = [layer for layer in layersInfo if ComplexDict(layer)["Type"].lower() in ["dielectric"]]
+#         otherLayersInfo = [layer for layer in layersInfo if ComplexDict(layer)["Type"].lower() not in ["dielectric","signal","conductor"]]
+#         
+#         ConductorLayerNames = self.ConductorLayerNames
+#         DielectricLayerNames = self.DielectricLayerNames
+#         AllLayerNames = self.getAllLayerNames()
+#         
+#         Layer._enableUpdate = False
+#         #set  layer other datas
+#         if len(dielectricLayersInfo)>0:
+#             if len(dielectricLayersInfo) == len(DielectricLayerNames):
+#                 log.info("update dielectric layers data by index.")
+#                 for i in range(len(dielectricLayersInfo))[::-1]:
+#                     log.info("update dielectric layers data by index: %s"%DielectricLayerNames[i])
+#                     self[DielectricLayerNames[i]].setData(dielectricLayersInfo[i])
+#             else:
+#                 log.exception("update layers by index, Dielectric layer count (%s) not same with layout count (%s)."%(len(dielectricLayersInfo),len(DielectricLayerNames)))
+#         else:
+#             log.debug("Input dielectricLayersInfo length is 0, skip.")
+#         
+#         if len(condLayersInfo)>0:
+#             if len(condLayersInfo) == len(ConductorLayerNames):
+#                 log.info("update Conductor layers data by index.")
+#                 for i in range(len(condLayersInfo))[::-1]:
+#                     log.info("update Conductor layers data by index: %s"%ConductorLayerNames[i])
+#                     self[ConductorLayerNames[i]].setData(condLayersInfo[i])
+#             else:
+#                 log.exception("update layers by index, Conductor layer count (%s) not same with layout count (%s)."%(len(condLayersInfo),len(ConductorLayerNames)))
+# 
+#         else:
+#             log.debug("Input ConductorLayerNames length is 0, skip.")
+#         
+#         
+#         Layer._enableUpdate = True
+#         
+#         layerArrayDatas = []
+#         for layer in self.All:
+#             layerArrayDatas.append(layer.ArrayDatas)
+# 
+#         self.layout.oEditor.ChangeLayers([
+#             "NAME:layers",
+#             "Mode:=", "Laminate",
+#             [
+#                 "NAME:pps"
+#             ]]+layerArrayDatas)
+#         
+#         self.refresh()
+
+    
     def setLayerDatas(self,layersInfo,mode = 0):
         '''
         layersInfo:
@@ -804,15 +850,34 @@ class Layers(Definitions):
         DielectricLayerNames = self.DielectricLayerNames
         AllLayerNames = self.getAllLayerNames()
         
-        
-
-        
-        
-        
         #--- byindex=1
         if mode == 1 or str(mode).lower() == "byindex":
 #             1: by index, signal layers and dielectric Layers must have same count
 
+#             #set thickness first, 20240929
+#             if len(dielectricLayersInfo)>0:
+#                 if len(dielectricLayersInfo) == len(DielectricLayerNames):
+#                     log.info("update dielectric layers thickness by index.")
+#                     for i in range(len(dielectricLayersInfo))[::-1]:
+#                         self[DielectricLayerNames[i]].Thickness = dielectricLayersInfo[i]["Thickness"]
+#                 else:
+#                     log.exception("update layers by index, Dielectric layer count (%s) not same with layout count (%s)."%(len(dielectricLayersInfo),len(DielectricLayerNames)))
+#             else:
+#                 log.debug("Input dielectricLayersInfo length is 0, skip.")
+#             
+#             if len(condLayersInfo)>0:
+#                 if len(condLayersInfo) == len(ConductorLayerNames):
+#                     log.info("update Conductor layers thickness by index.")
+#                     for i in range(len(condLayersInfo))[::-1]:
+#                         self[ConductorLayerNames[i]].Thickness = condLayersInfo[i]["Thickness"]
+#                 else:
+#                     log.exception("update layers by index, Conductor layer count (%s) not same with layout count (%s)."%(len(condLayersInfo),len(ConductorLayerNames)))
+# 
+#             else:
+#                 log.debug("Input ConductorLayerNames length is 0, skip.")
+            
+            Layer._enableUpdate = False
+            #set  layer datas
             if len(dielectricLayersInfo)>0:
                 if len(dielectricLayersInfo) == len(DielectricLayerNames):
                     log.info("update dielectric layers data by index.")
@@ -836,7 +901,22 @@ class Layers(Definitions):
             else:
                 log.debug("Input ConductorLayerNames length is 0, skip.")
             #continue executing
+#             self.refresh()
+
+            layerArrayDatas = []
+            for layer in self.All:
+                layerArrayDatas.append(layer.ArrayDatas)
+    
+            self.layout.oEditor.ChangeLayers([
+                "NAME:layers",
+                "Mode:=", "Laminate",
+                [
+                    "NAME:pps"
+                ]]+layerArrayDatas)
+            
+            Layer._enableUpdate = True
             self.refresh()
+            return
         
         
         #--- byname=2
@@ -888,17 +968,15 @@ class Layers(Definitions):
                 for layer in dielectricLayersInfo[::-1]:
                     self.addLayer(layer["Name"],type="dielectric",height=layer["Height"],refresh=False)
                     
-                #set layer thickness
-                self.layout.layers._definitionDict = None
-#                 self.setLayerDatas(layersInfo, mode = "byindex")  #set doubule time for some bug reason, if dielectric Layers added
-                self.refresh()
-
             #set layer thickness
             self.layout.layers._definitionDict = None
-            self.setLayerDatas(layersInfo, mode = "byindex")
+            self.setLayerDatas(layersInfo, mode = "byindex")  
             self.refresh()
-            #check layer height to make sure their consistent (for 3DL reason)
-            
+
+            #set layer thickness
+#             self.layout.layers._definitionDict = None
+#             self._quickUpdateLayers(layersInfo)
+
             return
 
         #--- auto=0      
@@ -992,7 +1070,7 @@ class Layers(Definitions):
                     continue
                 
                 #for layer Name
-                if key.lower() in ["name","layer","layerName"]:
+                if key.lower() in ["name","layer","layername","layer name"]:
                     layerDict["Name"] = layerDict[key]
                     continue
 

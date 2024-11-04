@@ -1,13 +1,12 @@
 #--- coding=utf-8
 #--- @author: yongsheng.guo@ansys.com
-#--- @Time: 20230611
+#--- @Time: 20240420
 
 
 import os
 import re
 import csv
 import clr
-clr.AddReference('System.Windows.Forms')
 
 import sys,os
 appPath = os.path.realpath(__file__)
@@ -25,20 +24,26 @@ except:
         clr.AddReferenceToFileAndPath(layoutlib)
         import pyLayout
         
-from pyLayout import Layout
+from pyLayout import Layout,loadCSV,log
 # pyLayout.log.setLogLevel(logLevel="DEBUG")
 
 
 
 def main():
-    layout = Layout()
+
+    layout = Layout("2023.2")
 #     layout = Layout()
     layout.initDesign()
-    csvPath = os.path.join(layout.projectDir,layout.ProjectName+"_"+layout.DesignName + ".csv")
-    layout.Layers.exportCsv(csvPath)
-    print("opening csv file: %s"%csvPath)
-    os.system("start %s"%csvPath)
 
+    layout.message("delete invalid RLC")
+    layout.Components.deleteInvalidComponents()
+    log.info("finished.")
+        
 if __name__ == '__main__':
 #     test1()
     main()
+    print("finished!")
+
+
+
+    

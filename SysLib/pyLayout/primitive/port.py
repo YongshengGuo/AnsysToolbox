@@ -78,22 +78,22 @@ class Port(Primitive):
         
         realKey = self._info.getReallyKey(key)
             
-        if key in self._info.EMProperties: 
+        if realKey in self._info.EMProperties: 
             self.layout.oEditor.SetPropertyValue("EM Design", "Excitations:" + self.Name, realKey, value)
             self._info[realKey] = value
             if realKey == "Port": #Remane port name
                 self.layout.Ports.refresh()
-            return
+            return 1
 #             self.parsed = False #refresh
 
         return super(self.__class__,self).set(key,value)
      
     def setPortImpedance(self,value):
-        self.setProp("Impedance", str(value))
-        self.setProp("Renormalize Impedence", str(value))
+        self.set("Impedance", str(value))
+        self.set("Renormalize Impedence", str(value))
         
     def setSIwavePortRefNet(self,value):
-        self.setProp("Reference Net", str(value))
+        self.set("Reference Net", str(value))
         
         
     def autoRename(self):
@@ -208,7 +208,7 @@ class Ports(Primitives):
                     orderNames.append(p)
                     origNames.remove(p)
             
-            log.info("reorder port by portOrder: %s"%(".".join(orderNames+origNames)))
+            log.info("reorder port by portOrder: %s"%(", ".join(orderNames+origNames)))
             oModule = self.layout.oDesign.GetModule("Excitations")         
             oModule.ReorderMatrix(orderNames+origNames) #add residual ports     
             return orderNames+origNames
@@ -230,4 +230,58 @@ class Ports(Primitives):
         oModule = self.layout.oDesign.GetModule("Excitations")
         oModule.ReorderMatrix(rulePorts+unRulePorts)
         return rulePorts+unRulePorts
+    
+    def addPinGroupPort(self,posPins,refPins,name=None,portZ0=0.1):
+        
+        #remove pins not in layout
+        posPins = [pin for pin in posPins if pin in self.layout.Pins]
+        refPins = [pin for pin in refPins if pin in self.layout.Pins]
+        
+        if len(posPins)<1:
+            log.info("PinGroup posPins have no pin. skip.")
+            return
+            
+        if len(refPins)<1:
+            log.info("PinGroup refPins have no pin. skip.")
+            return
+        
+        posPin1 = self.layout.Pins[posPins[0]]
+        posNet = posPin1.Net
+        posPortName = posPins[0]+"_"+posNet
+        
+        refPin1 = self.layout.Pins[refPins[0]]
+        refNet = refPin1.Net
+        refPortName = refPins[0]+"_"+refNet
+        
+#         if not name:
+#             name = posPortName
+        
+        if posPortName in self.layout.Ports:
+            log.warning("port '%s' already exist, will be delete."%name)
+            self.layout.Ports[posPortName].delete()
+            
+        if name and name in self.layout.Ports:
+            log.warning("port '%s' already exist, will be delete."%name)
+            self.layout.Ports[name].delete()
+                        
+
+        self.layout.oEditor.CreatePinGroups([
+                "NAME:PinGroupDatas",
+                ["NAME:%s"%posPortName]+posPins,
+                ["NAME:%s"%refPortName]+refPins
+            ])
+        self.layout.oEditor.CreatePinGroupPort(
+            [
+                "Port:="        , posPortName,
+                "Ref:="            , refPortName,
+                "Magnitude:="        , "0"
+            ])
+        
+        self.layout.Ports.push(posPortName)
+        self.layout.Ports[posPortName].setPortImpedance(portZ0)
+    
+        if name:
+            self.layout.Ports[posPortName]["Port"] = name
+
+        return self.layout.Ports[name]
         
