@@ -532,6 +532,8 @@ class ComplexDict(object):
                 mapKey = maps[key]
                 if isinstance(mapKey,ComplexDict):
                     if isinstance(mapKey["Key"], str):
+                        if "Set" not in mapKey:
+                            log.exception("%s property is read only."%mapKey["Key"])
                         returnValue = mapKey["Set"](value)
                         if returnValue!=None: 
                             setDictData(mapKey["Key"],returnValue,self._dict)
@@ -540,6 +542,8 @@ class ComplexDict(object):
                             pass
                         
                     elif isinstance(mapKey["Key"], (list,tuple)):
+                        if "Set" not in mapKey:
+                            log.exception("%s property is read only."%mapKey["Key"])
                         returnValue = mapKey["Set"](value)
                         for i in range(len(mapKey)):
                             if returnValue!=None: 

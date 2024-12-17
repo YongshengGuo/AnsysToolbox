@@ -15,7 +15,7 @@
 		<SubMenu Type="MenuItem" Name="AutoXNet" ExecuteType="Python" Path="$UserLib/3DLayout/Net/autoRLCNet.py" Arguments ="" PythonPath=""></SubMenu>
 	</SubMenu>
 	<SubMenu Name="Component" DesignType="3DLayout">
-		<SubMenu Type="MenuItem" Name="deleteInvalidRLC(&lt;2Pins)" ExecuteType="Python" Path="$UserLib/3DLayout/component/deleteInvalidRLC.py" Arguments ="" PythonPath=""></SubMenu>
+		<SubMenu Type="MenuItem" Name="DissolveInvalidRLC(&lt;2Pins)" ExecuteType="Python" Path="$UserLib/3DLayout/component/deleteInvalidRLC.py" Arguments ="" PythonPath=""></SubMenu>
 		<SubMenu Type="MenuItem" Name="deleteInvalidComponents(&lt;2Pins)" ExecuteType="Python" Path="$UserLib/3DLayout/component/deleteInvalidComponents.py" Arguments ="" PythonPath=""></SubMenu>
 	</SubMenu>
 	<SubMenu Name="Via" DesignType="3DLayout">
@@ -46,5 +46,6 @@
 		<SubMenu Type="MenuItem" Name="showProjectName_Ironpython" ExecuteType="IronPython" Path="$UserLib/Template/showProjectName.py" Arguments ="" EntryFunc="main" PythonPath=""></SubMenu>
 		<SubMenu Type="MenuItem" Name="ShowSysArgs" ExecuteType="Python" Path="$UserLib/Template/showSysArgs.py" Arguments ="testArg1 testArg2" PythonPath=""></SubMenu>
 	</SubMenu>
+	<SubMenu Type="MenuItem" Name="Help" ExecuteType="EXE" Path="$UserLib/../AnsysToolboxHelp.pdf"></SubMenu>
 	<SubMenu Type="MenuItem" Name="Exit" ExecuteType="Command"></SubMenu>
 </Menu>

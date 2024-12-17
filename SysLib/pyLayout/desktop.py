@@ -7,7 +7,7 @@ import os,sys,re
 import shutil
 import time
 
-import clr
+# import clr
 import os,sys,re
 from .common.common import log
 
@@ -54,8 +54,10 @@ Examples:
 # from .common.common import *
 
 isIronpython = "IronPython" in sys.version
+isPython = not isIronpython
+is_linux = "posix" in os.name
 
-def initializeDesktop(version=None, installDir=None, nonGraphical = False):
+def initializeDesktop(version=None, installDir=None, nonGraphical = False,newDesktop=False):
     '''
     initializeDesktop'''
     #"2021.1"
@@ -65,7 +67,8 @@ def initializeDesktop(version=None, installDir=None, nonGraphical = False):
         return oDesktop
     else:
         oDesktop = None
-        
+    
+    aedtInstallDir = None
     #set installDir
     if oDesktop:
         aedtInstallDir = oDesktop.GetExeDir()
@@ -73,90 +76,122 @@ def initializeDesktop(version=None, installDir=None, nonGraphical = False):
         aedtInstallDir = installDir.strip("/").strip("\\")
     else:
         #environ ANSYSEM_ROOTxxx, set installDir from version
-        oDesktop = None
-        if version == None:
-            log.debug("version or installDir must set one")
+        
+
+        verEnv = None
+        if installDir:
+            aedtInstallDir = installDir
+        
+        elif version:
+            ver = version.replace(".", "")[-3:]
+            verEnv = "ANSYSEM_ROOT%s" % ver
+            
+            if verEnv in os.environ:
+                aedtInstallDir = os.environ[verEnv] 
+        
+        if aedtInstallDir:
+            pass
+        elif "ANSYSEM_ROOT" in os.environ:
+            aedtInstallDir = os.environ["ANSYSEM_ROOT"]
+        else:
             ANSYSEM_ROOTs = list(
                 filter(lambda x: "ANSYSEM_ROOT" in x, os.environ))
             if ANSYSEM_ROOTs:
                 log.debug("Try to initialize Desktop in latest version")
                 ANSYSEM_ROOTs.sort(key=lambda x: x[-3:])
-                verEnv = ANSYSEM_ROOTs[-1]
-            else:
-                log.debug("not found ANSYSEM_ROOT")
-                return None
+                aedtInstallDir = os.environ[ANSYSEM_ROOTs[-1]]
+         
+        if aedtInstallDir: 
+            sys.path.insert(0,aedtInstallDir)
+            sys.path.insert(0,os.path.join(aedtInstallDir, 'PythonFiles', 'DesktopPlugin'))
         else:
-            #2022.1
-            ver = version.replace(".", "")[-3:]
-            verEnv = "ANSYSEM_ROOT%s" % ver
-        if verEnv in os.environ:
-            aedtInstallDir = os.environ[verEnv]
-        else:
-            raise ValueError("Do not found the install version %s" % version)
+            log.exception("please set environ ANSYSEM_ROOT=Ansys EM install path...")
         
-    sys.path.insert(0,aedtInstallDir)
-    sys.path.insert(0,os.path.join(aedtInstallDir, 'PythonFiles', 'DesktopPlugin'))
-    clr.AddReference("Ansys.Ansoft.DesktopPlugin")
-    clr.AddReference("Ansys.Ansoft.CoreCOMScripting")
-    clr.AddReference("Ansys.Ansoft.PluginCoreDotNet")
+#     sys.path.insert(0,aedtInstallDir)
+#     sys.path.insert(0,os.path.join(aedtInstallDir, 'PythonFiles', 'DesktopPlugin'))
     
-    if not oDesktop:
-        # set version from aedtInstallDir
-        if version == None:
-            ver1 = re.split(r"[\\/]+", aedtInstallDir)[-2]
-            ver2 = ver1.replace(".", "")[-3:]
-            version = "Ansoft.ElectronicsDesktop.20%s.%s" % (ver2[0:2],ver2[2])
-        else:
-            pass
-        
-        try:
-            log.info("Intial aedt desktop %s"%version)
-            
-#             #both for ironpython and python, not work
-#             AnsoftCOMUtil = __import__("Ansys.Ansoft.CoreCOMScripting")
-#             #COMUtil = AnsoftCOMUtil.Ansoft.CoreCOMScripting.Util.COMUtil
-#             StandalonePyScriptWrapper = AnsoftCOMUtil.Ansoft.CoreCOMScripting.COM.StandalonePyScriptWrapper
-#             if "Ansoft.ElectronicsDesktop" not in version:
-#                 version = "Ansoft.ElectronicsDesktop." + version
-#             log.debug(version)
-#             if nonGraphical:
-#                 oAnsoftApp = StandalonePyScriptWrapper.CreateObjectNew(nonGraphical)
-#             else:
-#                 oAnsoftApp = StandalonePyScriptWrapper.CreateObject(version)
-#                  
-#             oDesktop = oAnsoftApp.GetAppDesktop()
-
-            if isIronpython:
-                AnsoftCOMUtil = __import__("Ansys.Ansoft.CoreCOMScripting")
-                #COMUtil = AnsoftCOMUtil.Ansoft.CoreCOMScripting.Util.COMUtil
-                StandalonePyScriptWrapper = AnsoftCOMUtil.Ansoft.CoreCOMScripting.COM.StandalonePyScriptWrapper
-                if "Ansoft.ElectronicsDesktop" not in version:
-                    version = "Ansoft.ElectronicsDesktop." + version
-                log.debug(version)
-                if nonGraphical:
-                    oAnsoftApp = StandalonePyScriptWrapper.CreateObjectNew(nonGraphical)
-                else:
-                    oAnsoftApp = StandalonePyScriptWrapper.CreateObject(version)
-                      
+    
+    # set version from aedtInstallDir
+    if version == None:
+        ver1 = re.split(r"[\\/]+", aedtInstallDir)[-2]
+        ver2 = ver1.replace(".", "")[-3:]
+        version = "Ansoft.ElectronicsDesktop.20%s.%s" % (ver2[0:2],ver2[2])
+    else:
+        pass
+    
+    #for python
+    if not isIronpython:
+        #only for nonGraphical or newDesktop = true
+        if nonGraphical or newDesktop or is_linux:
+            try:
+                #only for version last then 2024R1
+                log.info("load PyDesktopPlugin")
+                import PyDesktopPlugin  # @UnresolvedImport
+                oAnsoftApp = PyDesktopPlugin.CreateAedtApplication(NGmode=nonGraphical,alwaysNew = newDesktop)
                 oDesktop = oAnsoftApp.GetAppDesktop()
+            except:
+                log.info("PyDesktopPlugin not load, it's only for version last then 2024R1")
+                oDesktop = None
+        else: 
+            try:
+                #for python
+                log.info("Intial AEDT from python win32com")
+                import win32com.client  # @UnresolvedImport
+                oAnsoftApp = win32com.client.Dispatch(version)
+                oDesktop = oAnsoftApp.GetAppDesktop()
+            except:
+                    log.info("Intial AEDT from python win32com fail")
+                    oDesktop = None
+ 
+    if oDesktop != None:
+        return oDesktop
+    
+    
+    if isIronpython:
+        #try to initial by clr (.net)
+        try:
+            #only work for ironpython
+            log.info("Intial aedt desktop %s by clr"%version)
+    
+            if is_linux:
+                try:
+                    from ansys.aedt.core.generic.clr_module import _clr # @UnresolvedImport
+                except:
+                    log.exception("pyaedt must be install: pip3 install pyaedt")
             else:
-                if nonGraphical:
-                    #only for version last then 2024R1
-                    import PyDesktopPlugin
-                    oAnsoftApp = PyDesktopPlugin.CreateAedtApplication(NGmode=nonGraphical,alwaysNew = True)
-                    oDesktop = oAnsoftApp.GetAppDesktop()
-                else:
-                    log.debug("Intial AEDT from python win32com")
-                    import win32com.client  # @UnresolvedImport
-                    oAnsoftApp = win32com.client.Dispatch(version)
-                    oDesktop = oAnsoftApp.GetAppDesktop()
+                #for windows
+                import clr as _clr # @UnresolvedImport
+                
+            _clr.AddReference("Ansys.Ansoft.DesktopPlugin")
+            _clr.AddReference("Ansys.Ansoft.CoreCOMScripting")
+            _clr.AddReference("Ansys.Ansoft.PluginCoreDotNet")
+    
+            AnsoftCOMUtil = __import__("Ansys.Ansoft.CoreCOMScripting")
+            #COMUtil = AnsoftCOMUtil.Ansoft.CoreCOMScripting.Util.COMUtil
+            StandalonePyScriptWrapper = AnsoftCOMUtil.Ansoft.CoreCOMScripting.COM.StandalonePyScriptWrapper
+            if "Ansoft.ElectronicsDesktop" not in version:
+                version = "Ansoft.ElectronicsDesktop." + version
+            log.debug(version)
+            #only work for ironpython
+            if nonGraphical or newDesktop:
+                oAnsoftApp = StandalonePyScriptWrapper.CreateObjectNew(nonGraphical)
+            else:
+                oAnsoftApp = StandalonePyScriptWrapper.CreateObject(version)
+                  
+            oDesktop = oAnsoftApp.GetAppDesktop()
+            
         except:
-            log.debug("error initialize Desktop")
+            log.debug("Intial AEDT from clr fail.")
             oDesktop = None
+        
+        
+    if oDesktop != None:
+        return oDesktop
+        
+            
     if oDesktop == None:
         raise ValueError("initialize Desktop fail")
     return oDesktop
-
 
 
 def _delete_objects():

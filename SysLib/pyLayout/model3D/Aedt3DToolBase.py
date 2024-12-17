@@ -40,7 +40,7 @@ class Aedt3DToolBase(object):
         "Ver":"Version",
         }
     
-    def __init__(self,toolType=None, version=None, installDir=None,nonGraphical=False):
+    def __init__(self,toolType=None, version=None, installDir=None,nonGraphical=False,newDesktop=False):
         '''
         初始化PyLayout对象环境
         
@@ -62,6 +62,7 @@ class Aedt3DToolBase(object):
         self._info.update("Version", version)
         self._info.update("InstallDir", installDir)
         self._info.update("NonGraphical", nonGraphical)
+        self._info.update("newDesktop", newDesktop)
         self._info.update("UsePyAedt", True)
         self._info.update("PyAedtApp", None)
         self._info.update("Log", log)
@@ -162,7 +163,7 @@ class Aedt3DToolBase(object):
         try:
             from pyaedt import launch_desktop
             log.info("try to initial oDesktop using PyLayout Lib... ")
-            self.PyAedtApp = launch_desktop(version = self.version,non_graphical=self.NonGraphical,new_desktop = False)
+            self.PyAedtApp = launch_desktop(version = self.version,non_graphical=self.NonGraphical,new_desktop = self.newDesktop,close_on_exit=False)
             self.UsePyAedt = True
             self._oDesktop = self.PyAedtApp.odesktop
             sys.modules["__main__"].oDesktop = self._oDesktop
@@ -194,6 +195,9 @@ class Aedt3DToolBase(object):
                 self.UsePyAedt = bool(self.PyAedtApp) #may be lanuched from aedt internal
                 return oDesktop
         
+        if self.NonGraphical:
+            log.info("Will be intial oDesktop in nonGraphical mnode.")
+        
         #try to intial by pyaedt
         if self.UsePyAedt:
             self.__initByPyaedt()
@@ -201,7 +205,7 @@ class Aedt3DToolBase(object):
         #try to intial by internal method
         if self._oDesktop == None: 
             log.info("try to initial oDesktop using  internal method... ")
-            self._oDesktop = initializeDesktop(self.version,self.installDir,nonGraphical=self.NonGraphical)
+            self._oDesktop = initializeDesktop(self.version,self.installDir,nonGraphical=self.NonGraphical,newDesktop=self.newDesktop)
             self.installDir = self._oDesktop.GetExeDir()
             sys.modules["__main__"].oDesktop = self._oDesktop
             
@@ -334,7 +338,7 @@ class Aedt3DToolBase(object):
 #                 self._info.update("DesignName", "")
             
             if designtype != self._toolType:
-                log.error("design type %s not match with input type,  %s."% (designtype, str(self._toolType)))
+                log.error("deisgn: %s type %s not match with input type,  %s."% (self.getDesignName(self._oDesign),designtype, str(self._toolType)))
             
             self._info.update("oDesign",self._oDesign)
             self._info.update("DesignName", self.getDesignName(self._oDesign))

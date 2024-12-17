@@ -29,41 +29,42 @@ def main():
     layout.initDesign()
     
     for port in layout.Ports.All:
-        #already is named port, skip
-        if "." in port.Name:
-            layout.log.info("skip port: %s"%port.Name)
-            continue
+        port.autoRename()
+#         #already is named port, skip
+#         if "." in port.Name:
+#             layout.log.info("skip port: %s"%port.Name)
+#             continue
             
-        ConnectionPoints = port.ConnectionPoints #0.000400 0.073049 Dir:270.000000 Layer: BOTTOM    
-        splits = ConnectionPoints.split() #['0.000400', '0.073049', 'Dir:270.000000', 'Layer:', 'BOTTOM']
-        X = float(splits[0])
-        Y = float(splits[1])
-        layer = splits[-1]
-        posObjs = list(layout.getObjectByPoint([X,Y],layer = layer,radius="1mil"))
-        print(port.Name,posObjs,layer)
+#         ConnectionPoints = port.ConnectionPoints #0.000400 0.073049 Dir:270.000000 Layer: BOTTOM    
+#         splits = ConnectionPoints.split() #['0.000400', '0.073049', 'Dir:270.000000', 'Layer:', 'BOTTOM']
+#         X = float(splits[0])
+#         Y = float(splits[1])
+#         layer = splits[-1]
+#         posObjs = list(layout.getObjectByPoint([X,Y],layer = layer,radius="1mil"))
+#         print(port.Name,posObjs,layer)
 
-        if port.Name in posObjs:
-            posObjs.remove(port.Name)
-#             
-#         posObj = posObjs[0]
-        posObj = None
-        for obj in posObjs:
-            if obj in layout.Pins:
-                posObj = obj
-                break
-        if not posObj:
-            posObj = posObjs[0]
+#         if port.Name in posObjs:
+#             posObjs.remove(port.Name)
+# #             
+# #         posObj = posObjs[0]
+#         posObj = None
+#         for obj in posObjs:
+#             if obj in layout.Pins:
+#                 posObj = obj
+#                 break
+#         if not posObj:
+#             posObj = posObjs[0]
             
-        if posObj in layout.Pins:   
-            tempList = list(posObj.split("-"))+[layout.Pins[posObj].Net]
-            newName = ".".join(tempList)
-    #         print(newName,port)
-            layout.log.info("Rename %s to %s"%(port.Name,newName))
-            port.Port = newName
-        else:
-            newName = layout[posObj].Net
-            layout.log.info("Rename %s to %s"%(port.Name,newName))
-            port.Port = newName
+#         if posObj in layout.Pins:   
+#             tempList = list(posObj.split("-"))+[layout.Pins[posObj].Net]
+#             newName = ".".join(tempList)
+#     #         print(newName,port)
+#             layout.log.info("Rename %s to %s"%(port.Name,newName))
+#             port.Port = newName
+#         else:
+#             newName = layout[posObj].Net
+#             layout.log.info("Rename %s to %s"%(port.Name,newName))
+#             port.Port = newName
         
 
     

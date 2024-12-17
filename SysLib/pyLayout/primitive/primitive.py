@@ -137,7 +137,7 @@ class Primitive(object):
         for prop in properties:
             self._info.update(prop,None) #here give None value. get property value when used to improve running speed
             if " " in prop:
-                maps.update({prop.replace(" ",""):prop}) #map property with space characters
+                maps.update({prop.replace(" ","").replace("-","_"):prop}) #map property with space characters
                 
             if re.match(r"Pt(\d+|s)$",prop,re.IGNORECASE): 
                 self._info.update("Pts",None)
@@ -188,7 +188,6 @@ class Primitive(object):
         
         realKey = self._info.getReallyKey(key) #realKey for mapping
         if re.match(r"Pt(\d+|s)$",realKey,re.IGNORECASE) or realKey in ["Center","Pt A","Pt B","Location"]: 
-            
             self._info.update(realKey,self.getPoint(realKey))
             return self._info[realKey]
         
@@ -286,10 +285,15 @@ class Primitive(object):
             ptValue = self.layout.oEditor.GetPropertyValue("BaseElementTab",self.Name,key)
             return Point(["%s%s"%(c.strip(),self.layout.unit) for c in ptValue.split(",")])
         
+        if re.match(r"ArcHeight.*$",key):
+            ptValue = self.layout.oEditor.GetPropertyValue("BaseElementTab",self.Name,key)
+            return ptValue
+#             return "%s%s"%(ptValue.strip(),self.layout.unit)
+        
         if key.lower() == "pts":
             pts = []
             for p in self._info.Keys:
-                if re.match(r"Pt\d+", p):
+                if re.match(r"Pt\d+$", p) or re.match(r"ArcHeight.*$", p):
                     pts.append(self.getPoint(p))
             return pts
         

@@ -87,6 +87,7 @@ class Net(Definition):
         objectCDicts = ComplexDict()
         maps = {}
         objectCDicts.update("Net", self.name)
+        objectCDicts.update("self", self)
         for type in self.layout.primitiveTypes:
             objectCDicts.update(type+"s",type)
             fxDict = {
@@ -100,6 +101,7 @@ class Net(Definition):
             "Key":("self",type+"s"),
             "Get":lambda s,k:s.getConnectedObjs(k)
             }})
+
         objectCDicts.setMaps(maps)
         return objectCDicts
     
@@ -192,6 +194,59 @@ class Net(Definition):
                 ]
             ])
     
+    
+    def nameNoNet(self):
+        
+        objs = self.getConnectedObjs("line") + self.getConnectedObjs("poly")
+        if not objs:
+            log.info("%s not have objects connected,skip."%self.name)
+            return
+        
+        #SelectPhysicallyConnected
+        self.layout.oEditor.UnselectAll()
+        self.layout.oEditor.SelectPhysicallyConnected(
+            [
+                "NAME:elements", 
+                objs[0]
+            ])
+        objs1 = self.layout.oEditor.GetSelections()
+        
+        #SelectNetConnected
+        self.layout.oEditor.UnselectAll()
+        self.layout.oEditor.SelectNetConnected(
+            [
+                "NAME:elements", 
+                objs[0]
+            ])
+        objs2 = self.layout.oEditor.GetSelections()
+        
+        self.layout.oEditor.UnselectAll()
+        if len(objs1) == len(objs2):
+            return
+        else:
+#             log.info("name no-net objes on net %s"%self.name)
+            objs3 = []
+            for obj in objs1:
+                if "Net" in self.layout.Objects[obj] and self.layout.Objects[obj].name != self.name:
+                    objs3.append(obj)
+                    
+            self.layout.oEditor.ChangeProperty(
+                [
+                    "NAME:AllTabs",
+                    [
+                        "NAME:BaseElementTab",
+                        [
+                            "NAME:PropServers"
+                        ]+objs3,
+                        [
+                            "NAME:ChangedProps",
+                            [
+                                "NAME:Net",
+                                "Value:=", self.name
+                            ]
+                        ]
+                    ]
+                ])      
     
     def delete(self):
         self.layout.oEditor.DeleteNets([self.Name])
@@ -336,10 +391,12 @@ class Nets(Definitions):
                 pnet,nnet = comp.NetNames
     
                 if pnet in pwrNets or nnet in pwrNets: 
-                    log.debug("Component: %s, Pnet: %s, Nnet: %s %s"%(comp.Name,pnet,nnet,"................%s/%s"%(i,len(comps))))
+#                     log.debug("Component: %s, Pnet: %s, Nnet: %s %s"%(comp.Name,pnet,nnet,"................%s/%s"%(i,len(comps))))
                     continue
                 
-                log.debug("Component: %s, Pnet: %s, Nnet: %s %s"%(comp.Name,pnet,nnet,"................%s/%s"%(i,len(comps))))
+#                 log.debug("Component: %s, Pnet: %s, Nnet: %s %s"%(comp.Name,pnet,nnet,"................%s/%s"%(i,len(comps))))
+                
+                log.info(("Component: %s, Pnet: %s, Nnet: %s"%(comp.Name,pnet,nnet)).ljust(50,"-") + "%s/%s"%(i,len(comps)))
                 
                 if re.match(r"^(N?\d+$)|(UNNAMED.*)|(\$.*)",pnet,re.I) and re.match(r"^N?[a-z0-9_]+[a-z]+",nnet,re.I): 
                     log.info(comp.Name+" Nets: "+ nnet + " " + pnet+ ": Rename "+ pnet + " to " + nnet+tail)
@@ -347,3 +404,13 @@ class Nets(Definitions):
                 if re.match(r"^(N?\d+$)|(UNNAMED.*)|(\$.*)",nnet,re.I) and re.match(r"^N?[a-z0-9_]+[a-z]+",pnet,re.I): 
                     log.info(comp.Name+" Nets: "+ pnet + " " + nnet + ": Rename "+ nnet + " to " + pnet+tail)
                     self.layout.Nets[nnet].rename(pnet+tail)
+                    
+    def nameNoNets(self):
+        i=0
+        n = self.Count
+        for net in self.All:
+            log.info(("Name unnamed objects on net: %s"%net.name).ljust(50,"-") + "%s/%s"%(i,n))
+            if net.name != "----" or net.name.strip() == "":
+                net.nameNoNet()
+                
+            i +=1 

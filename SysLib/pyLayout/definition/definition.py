@@ -111,6 +111,9 @@ class Definition(object):
         else:
             self[key] = value
 
+    def __contains__(self,key):
+        return key in self.Props
+
     def __repr__(self):
         return "%s Object: %s"%(self.__class__.__name__ ,self.name)
     

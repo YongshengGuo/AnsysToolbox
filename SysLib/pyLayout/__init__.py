@@ -15,6 +15,7 @@ from .definition.padStack import PadStacks
 from .common.complexDict import ComplexDict
 from .common.arrayStruct import ArrayStruct
 from .common.common import *
+from .common.unit import Unit
 from .definition.componentLib import ComponentDef
 from .layoutOptions import options
 from .postData.solution import Solutions
@@ -32,9 +33,8 @@ from .common.xlsReader import XlsReader
 
 from .pyLayout import Layout
 
-# version = "V0.62 20240314"
-version = "V0.11.2 20240729"
+version = "V0.12.3 20241213"
 log.info("pyLayout Version: %s"%version)
-log.info("the lastest release on: https://github.com/YongshengGuo/pyLayout")
+# log.info("the lastest release on: https://github.com/YongshengGuo/pyLayout")
 log.setLogLevel(logLevel="INFO")
 # log.setLogLevel(logLevel="DEBUG")

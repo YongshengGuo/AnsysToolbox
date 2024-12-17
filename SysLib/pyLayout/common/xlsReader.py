@@ -16,7 +16,22 @@ class XlsReader(object):
         self.sheetDict = None
         
         
-    def getSheetData(self, path=None, sheetName=0):
+    def readSheet(self,sheet,header_row=1):
+        # 读取列标题
+        headers = [cell.value for cell in sheet[header_row]]
+        
+        # 初始化数据字典列表
+        data_dicts = []
+        
+        func = lambda x: "" if x=="None" else x
+        # 读取数据行
+        for row_num, row in enumerate(sheet.iter_rows(min_row=header_row + 1, values_only=True), start=header_row + 1):
+            row_dict = {headers[col_num]: func(str(row[col_num])) for col_num, _ in enumerate(row)}
+            data_dicts.append(row_dict)
+        
+        return data_dicts
+        
+    def getSheetData(self, path=None, sheetName=None):
         '''
         根据指定的路径和工作表名称获取数据。
         
@@ -31,19 +46,20 @@ class XlsReader(object):
         - None: 加载所有工作表。
         - return list 
         '''
-        # 如果路径未提供，则使用类的默认路径
         path = path or self.path
+        import openpyxl
+        # 打开Excel文件
+        workbook = openpyxl.load_workbook(path)
         
-        # 导入pandas库，用于数据处理
-        import pandas as pd
-        # 读取Excel文件，这里假设文件名为'example.xlsx'
-        # 可以指定要读取的工作表名称
-        df = pd.read_excel(path, sheet_name = sheetName)
-        df = df.applymap(lambda x: str(x).strip() if str(x).strip() != "nan" else "") #转化为字符串
-        # 将DataFrame转换为列表
-        datas = list(df.to_dict(orient='index').values())
-        return datas
-    
+        # 获取工作表，如果未指定工作表名称，则获取活动工作表
+        if sheetName:
+            sheet = workbook[sheetName]
+        else:
+            sheet = workbook.active
+        
+        return self.readSheet(sheet)
+
+
     def getAllSheetData(self, path=None):
         '''
         获取Excel文件中的所有工作表数据。
@@ -54,19 +70,10 @@ class XlsReader(object):
         返回:
         - dict: 包含所有工作表数据的字典。键为工作表名称，值为对应的DataFrame。
         '''
-        # 如果路径未提供，则使用类的默认路径
+        import openpyxl
         path = path or self.path
-        # 导入pandas库，用于数据处理
-        import pandas as pd
-        # 读取Excel文件，这里假设文件名为'example.xlsx'
-        # 可以指定要读取的工作表名称
-        df_all = pd.read_excel(path, sheet_name = None)
-        # 将DataFrame转换为列表
-        for key in df_all:
-            df = df_all[key]
-            df = df.map(lambda x: str(x).strip() if str(x).strip() != "nan" else "") #转化为字符串
-            df_all[key] = list(df.to_dict(orient='index').values())
-        return df_all
+        workbook = openpyxl.load_workbook(path, data_only=True)
+        return {sheetName:self.readSheet(workbook[sheetName]) for sheetName in workbook.sheetnames}
 
     def readAll(self):
         return self.getAllSheetData()

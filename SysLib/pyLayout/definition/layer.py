@@ -238,9 +238,6 @@ class Layer(Definition):
             if info[key] == "false":
                 info[key] = False
 
-
-
-
         maps.update({"indexIntra":{
             "Key":"self",
             "Get":lambda s: s._getIndexIntra()
@@ -257,6 +254,24 @@ class Layer(Definition):
             "Get":lambda s:s._getObjects()
             }})
             
+        
+        #FillMaterial 'Type: dielectric'  'Type: signal'
+        maps.update({"LayerDK":{
+            "Key":"self",
+            "Get":lambda s:s.layout.Materials[s.Material].DK if self.Type == "dielectric" else s.layout.Materials[s.FillMaterial].DK 
+            }})
+        
+        
+        maps.update({"LayerDF":{
+            "Key":"self",
+            "Get":lambda s:s.layout.Materials[s.Material].DF if self.Type == "dielectric" else s.layout.Materials[s.FillMaterial].DF
+            }})
+        
+        maps.update({"LayerCond":{
+            "Key":"self",
+            "Get":lambda s:s.layout.Materials[s.Material].Cond
+            }})
+        
     
         if self._info:
             self._info.updates(info)
@@ -591,6 +606,8 @@ class Layers(Definitions):
             for i,v in enumerate(ConductorLayerNames):
                 maps.update({"C%s"%(i+1):v})
                 maps.update({"CB%s"%(count-i):v})
+                maps.update({"L%s"%(i+1):v})
+                maps.update({"LB%s"%(count-i):v})
 
             #short name for dielectric
             count = len(DielectricLayerNames)
@@ -1098,9 +1115,9 @@ class Layers(Definitions):
             row.append(layer.name)
             row.append(layer.Type)
             row.append(layer.Thickness)
-            row.append("3.8")
-            row.append("0.01")
-            row.append("")
+            row.append(layer.LayerDK)
+            row.append(layer.LayerDF)
+            row.append(layer.Roughness if layer.Type == "signal" and layer.UseRoughness else "")
             layerList.append(row)
         
         writeCSV(csvPath,layerList,header=header)

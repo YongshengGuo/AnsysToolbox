@@ -338,6 +338,14 @@ class Component(Primitive):
         '''
         
         log.info("Add RLC model to component '%s': R:%s L:%s, C:%s"%(self.name,R,L,C))
+        if len(self.PinNames) != 2:
+            log.error("RLC Model only support two pins RLC Component: %s have %s pins, will skip."%(self.name,len(self.PinNames)))
+            return
+        
+        if self.PartType not in ["Resistor","Inductor","Capacitor"]:
+            log.error("RLC Model only support RLC Part Type: %s Part type is %s, will skip."%(self.name,len(self.PartType)))
+            return
+                    
         self.layout.oEditor.ChangeProperty(
             [
                 "NAME:AllTabs",
@@ -359,15 +367,15 @@ class Component(Primitive):
                                 "PinPairRLC:=", ["RLCModelType:=", 0,                                
                                  "ppr:="    , ["p1:=", "1","p2:=", "2","rlc:=", 
                                     ["r:=", str(R) if R else "0",                                        
-                                     "re:=", True,                                        
+                                     "re:=", True if R != None else False,
                                      "l:=", str(L) if L else "0",                                      
-                                     "le:=", True,                                        
+                                     "le:=", True if L != None else False,
                                      "c:=", str(C) if C else "0",                                    
-                                     "ce:=", True,                                        
+                                     "ce:=", True if C != None else False,
                                      "p:=", parallel,                                        
                                      #"lyr:=", layerNum
                                     ]]]],
-                                "CompType:="        , ["Resistor","Inductor","Capacitor"].index(self.Type)+1
+                                "CompType:="        , ["Resistor","Inductor","Capacitor"].index(self.PartType)+1
                             ]
                         ]
                     ]
@@ -577,8 +585,12 @@ class Components(Primitives):
                 #comp.delete()
 #                 log.debug("delete invalid RLC: %s"%comp.Name)
                 delComps.append(comp.Name)
-            
-        self.layout.oEditor.DissolveComponents(delComps)
+                
+        if not delComps:
+            return
+        
+#         self.layout.oEditor.DissolveComponents(delComps)
+        self.layout.oEditor.Delete(delComps) #oEditor.Delete(["R440", "R442", "R443"])
         self.refresh()
         
         
