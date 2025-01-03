@@ -111,6 +111,10 @@ class Component(Primitive):
             "Get":lambda s:[s.layout.Pins[name] for name in s.layout.oEditor.GetComponentPins(s.name)]
             }})
         
+        maps.update({"PinCount":{
+            "Key":"self",
+            "Get":lambda s:len(s.layout.oEditor.GetComponentPins(s.name))
+            }})
         
         maps.update({"NetNames":{
             "Key":"self",

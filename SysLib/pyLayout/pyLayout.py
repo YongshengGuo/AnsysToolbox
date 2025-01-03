@@ -873,7 +873,7 @@ class Layout(object):
         
     def openAedt(self,path,unlock=False):
         if unlock:
-            if os.path.exists(path[-4:]+"lock"):
+            if os.path.exists(path+".lock"):
                 os.remove(path)
         
         log.info("OpenProject : %s"%path)

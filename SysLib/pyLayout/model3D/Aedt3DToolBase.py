@@ -313,7 +313,7 @@ class Aedt3DToolBase(object):
                 if designName not in designList:
                     log.error("design not in project.%s"%designName)
                     raise Exception("design not in project.%s"%designName)
-#                 self._oDesign = self._oProject.SetActiveDesign(designName)
+                self._oDesign = self._oProject.SetActiveDesign(designName)
             else:
                 self._oDesign = self._oProject.GetActiveDesign()
                 if not self._oDesign:

@@ -7,6 +7,7 @@ from .definition.layer import Layers
 from .definition.material import Materials
 from .definition.variable import Variables
 from .definition.setup import Setups
+from .definition.path import Path,Node
 from .primitive.port import Ports
 from .primitive.line import Lines
 from .primitive.via import Vias

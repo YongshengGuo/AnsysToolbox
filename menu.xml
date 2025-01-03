@@ -13,6 +13,7 @@
 	</SubMenu>
 	<SubMenu Name="Net" DesignType="3DLayout">
 		<SubMenu Type="MenuItem" Name="AutoXNet" ExecuteType="Python" Path="$UserLib/3DLayout/Net/autoRLCNet.py" Arguments ="" PythonPath=""></SubMenu>
+		<SubMenu Type="MenuItem" Name="AutoRename No-Net" ExecuteType="Python" Path="$UserLib/3DLayout/Net/autoRenameNo-Nets.py" Arguments ="" PythonPath=""></SubMenu>
 	</SubMenu>
 	<SubMenu Name="Component" DesignType="3DLayout">
 		<SubMenu Type="MenuItem" Name="DissolveInvalidRLC(&lt;2Pins)" ExecuteType="Python" Path="$UserLib/3DLayout/component/deleteInvalidRLC.py" Arguments ="" PythonPath=""></SubMenu>

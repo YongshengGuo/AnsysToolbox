@@ -221,15 +221,15 @@ class Net(Definition):
         objs2 = self.layout.oEditor.GetSelections()
         
         self.layout.oEditor.UnselectAll()
-        if len(objs1) == len(objs2):
-            return
-        else:
+        
+        unNameObjs = list(set(objs1)-set(objs2))
+        if unNameObjs:
 #             log.info("name no-net objes on net %s"%self.name)
-            objs3 = []
-            for obj in objs1:
-                if "Net" in self.layout.Objects[obj] and self.layout.Objects[obj].name != self.name:
-                    objs3.append(obj)
-                    
+            objs3 = [obj for obj in unNameObjs if "Net" in self.layout.Objects[obj] ]
+            if not objs3:
+                return 
+            
+            log.info("Rename objects on net %s: %s"%(self.name,str(objs3)))
             self.layout.oEditor.ChangeProperty(
                 [
                     "NAME:AllTabs",
@@ -410,7 +410,10 @@ class Nets(Definitions):
         n = self.Count
         for net in self.All:
             log.info(("Name unnamed objects on net: %s"%net.name).ljust(50,"-") + "%s/%s"%(i,n))
-            if net.name != "----" or net.name.strip() == "":
-                net.nameNoNet()
-                
             i +=1 
+            if net.name.strip("-").strip() == "":
+                continue
+            if net.name == "<NO-NET>":
+                continue
+            net.nameNoNet()
+            

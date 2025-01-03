@@ -401,7 +401,7 @@ class Layer(Definition):
                     layerDict["DF"] = 0
                 
                 #consider DK,df maybe not same with material in project, alway update #20240314
-                layerDict["FillMaterial"] = "DK%sDK%s"%(info["DK"],info["DF"])
+                layerDict["FillMaterial"] = "DK%sDF%s"%(info["DK"],info["DF"])
                 self.layout.Materials.add({"Name":info["FillMaterial"],
                                                   "DK": info["DK"],
                                                   "DF": info["DF"]
@@ -423,7 +423,7 @@ class Layer(Definition):
                     layerDict["DF"] = 0
 
                 #consider DK,df maybe not same with material in project, alway update #20240314
-                layerDict["Material"] = "DK%sDK%s"%(info["DK"],info["DF"])
+                layerDict["Material"] = "DK%sDF%s"%(info["DK"],info["DF"])
                 self.layout.Materials.add({"Name":info["Material"],
                                                   "DK": info["DK"],
                                                   "DF": info["DF"]

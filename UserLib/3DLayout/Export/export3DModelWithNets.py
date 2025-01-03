@@ -25,25 +25,46 @@ from pyLayout import Layout
 def export2HFSS():
     layout = Layout()
     layout.initDesign()
-    if len(layout.Setups)<1:
-        layout.Setups.add("HFSS")
-    layout.Setups[0].exportToHfss()
+    setupHFSS = None
+    for setup in layout.Setups: 
+        if setup.SolveSetupType == "HFSS":
+            setupHFSS = setup
+            break
+    if not setupHFSS: 
+        setupHFSS = layout.Setups.add("HFSS")
+        setupHFSS.Order = "First"
+        
+    setupHFSS.exportToHfss()
     print("finished!")
     
 def export2Q3D():
     layout = Layout()
     layout.initDesign()
-    if len(layout.Setups)<1:
-        layout.Setups.add("HFSS")
-    layout.Setups[0].exportToQ3D()
+    setupHFSS = None
+    for setup in layout.Setups: 
+        if setup.SolveSetupType == "HFSS":
+            setupHFSS = setup
+            break
+    if not setupHFSS: 
+        setupHFSS = layout.Setups.add("HFSS")
+        setupHFSS.Order = "First"
+        
+    setupHFSS.exportToQ3D()
     print("finished!")
     
 def export2Maxwell():
     layout = Layout()
     layout.initDesign()
-    if len(layout.Setups)<1:
-        layout.Setups.add("HFSS")
-    layout.Setups[0].exportToMaxwell()
+    setupHFSS = None
+    for setup in layout.Setups: 
+        if setup.SolveSetupType == "HFSS":
+            setupHFSS = setup
+            break
+    if not setupHFSS: 
+        setupHFSS = layout.Setups.add("HFSS")
+        setupHFSS.Order = "First"
+        
+    setupHFSS.exportToMaxwell()
     print("finished!")
     
 
