@@ -69,7 +69,7 @@ class Point(object):
         log.exception("Point key error: %s"%str(key))
         
     def __getattr__(self,key):
-        if key in ["x","y","arc"]:
+        if key in ["x","y","arc"]: #not key.lower()
             return object.__getattr__(self,key)
         else:
             log.debug("__getattr__ from __getitem__: %s"%key)

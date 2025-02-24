@@ -254,6 +254,7 @@ class Aedt3DToolBase(object):
                  
                 if not self._oProject:
                     self._oProject = oDesktop.GetProjects()[0]
+                    oDesktop.SetActiveProject(self._oProject.GetName())
                  
         if not self._oProject:
             log.error("Must have one project opened in aedt.")
@@ -315,7 +316,15 @@ class Aedt3DToolBase(object):
                     raise Exception("design not in project.%s"%designName)
                 self._oDesign = self._oProject.SetActiveDesign(designName)
             else:
-                self._oDesign = self._oProject.GetActiveDesign()
+                #update for 2025.1
+                try:
+                    self._oDesign = self._oProject.GetActiveDesign()
+                except:
+                    log.info("GetActiveDesign error.")
+#                     log.info("try to get the first design")
+#                     self._oDesign = self._oProject.SetActiveDesign(designList[0])
+                
+                #for 2024.2 GetActiveDesign() may return None
                 if not self._oDesign:
                     log.info("try to get the first design")
                     self._oDesign = self._oProject.SetActiveDesign(designList[0])
@@ -328,14 +337,7 @@ class Aedt3DToolBase(object):
                 designtype = self._oDesign.GetDesignType()
             
             log.info("design type:%s"%designtype)  #exception if not 3DL design
-#             if designtype == 'HFSS 3D Layout Design':
-#                 self._info.update("oDesign",self._oDesign)
-#                 self._info.update("oEditor",self._oDesign.SetActiveEditor("Layout"))
-#                 self._info.update("DesignName", self.getDesignName(self._oDesign))
-#             else:
-#                 self._info.update("oDesign",None)
-#                 self._info.update("oEditor",None)
-#                 self._info.update("DesignName", "")
+
             
             if designtype != self._toolType:
                 log.error("deisgn: %s type %s not match with input type,  %s."% (self.getDesignName(self._oDesign),designtype, str(self._toolType)))

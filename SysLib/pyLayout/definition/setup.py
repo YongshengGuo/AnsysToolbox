@@ -148,6 +148,7 @@ class Setup(Definition):
                   "Set":lambda x:[-1,1,2][("mixed","first","second").index(x.lower())],
                   "Get":lambda y:("mixed","first","second")[(-1,1,2).index(y)],
                   },
+        "PortMaxDeltaZo":"AdvancedSettings/MaxDeltaZo",
         "MaxPasses": "AdaptiveSettings/SingleFrequencyDataList/AdaptiveFrequencyData/MaxPasses"
         }
     

@@ -460,8 +460,11 @@ class Primitives(object):
         self._objectDict  = None
 
         
-    def push(self,name):
-        self._objectDict.update(name,self.primitiveClass(name,layout=self.layout))
+    def push(self,name,obj=None):
+        if obj:
+            self._objectDict.update(name,obj)
+        else:
+            self._objectDict.update(name,self.primitiveClass(name,layout=self.layout))
     
     def pop(self,name):
         del self._objectDict[name]
@@ -497,82 +500,28 @@ class Primitives(object):
                 break
         return name
     
-    #add Circle
-    
+#     #add Circle
+#     def addCircle(self,center,r,layerName):
+#         '''
+#         center:[x,y],"x,y", Point
+#         r: 
+#         '''
+#         cpt = Point(center)
+#         name = self.layout.oEditor.CreateCircle(
+#             [
+#                 "NAME:Contents",
+#                 "circleGeometry:="    , 
+#                     ["Name:=", "circle_0",
+#                     "LayerName:=", self.layout.Layers[layerName].Name,
+#                     "lw:=", "0",
+#                     "x:=", cpt.X,
+#                     "y:=", cpt.Y,
+#                     "r:=", str(r)]
+#             ])
+#         
+#         self.push(name)
+#         return self[name]
 
-    def addCircle(self,center,r,layerName):
-        '''
-        center:[x,y],"x,y", Point
-        r: 
-        '''
-        cpt = Point(center)
-        name = self.layout.oEditor.CreateCircle(
-            [
-                "NAME:Contents",
-                "circleGeometry:="    , 
-                    ["Name:=", "circle_0",
-                    "LayerName:=", self.layout.Layers[layerName].Name,
-                    "lw:=", "0",
-                    "x:=", cpt.X,
-                    "y:=", cpt.Y,
-                    "r:=", str(r)]
-            ])
-        
-        self.push(name)
-        return self[name]
-    
-    def addRectangle(self,ptA,ptB,layerName):
-        pt1 = Point(ptA)
-        pt2 = Point(ptB)
-        
-        self.layout.oEditor.CreateRectangle(
-            [
-                "NAME:Contents",
-                "rectGeometry:="    , 
-                ["Name:=", "rect_0",
-                 "LayerName:=", self.layout.Layers[layerName].Name,
-                 "lw:=", "0",
-                 "Ax:=", pt1.X,"Ay:=", pt1.Y,
-                 "Bx:=", pt2.X,"By:=", pt2.Y,
-                 "cr:=", "0mm","ang:=", "0deg"]
-            ])
-    
-    def addpolygon(self,points,layerName):
-        '''
-        points:list,tuple, Point
-        '''
-        if not points or len(points)<3:
-            log.exception("Points of polygon must have 3 points")
-            
-#         if not name:
-#             name = self.getUniqueName()
-            
-        pts = [Point(p) for p in points]
-        xyListTemp = []
-        for i in range(len(pts)):
-            xyListTemp.append("x:=")
-            xyListTemp.append(0)
-            xyListTemp.append("y:=")
-            xyListTemp.append(0)
-        
-        name = self.layout.oEditor.CreatePolygon(
-        [
-            "NAME:Contents",
-            "polyGeometry:=", 
-            ["Name:=", "poly_0",     
-            "LayerName:=", self.layout.Layers[layerName].Name,
-            "lw:=", "0","n:=", 6,
-            "U:=", self.layout.unit]  + xyListTemp
-    #         "x:=", -1,"y:=", -25,"x:=", -11,"y:=", -41,"x:=", -4,"y:=", -49,"x:=", 37,"y:=", -50,"x:=", 24,"y:=", -21,"x:=", 11,"y:=", -29,"x:=", -1,"y:=", -25]
-        ])
-        
-        self.push(name)
-        for i in range(len(pts)):
-            self[name]["Pt%s"%i] = pts[i]
-            
-        return self[name]
-    
-    
 class Objects3DL(Primitives):
 
     def __init__(self,layout=None,types=".*"):
@@ -581,6 +530,8 @@ class Objects3DL(Primitives):
     @property
     def ObjectDict(self):
         '''
+        alway return new object list.
+        
         FindObjects
         "Type" to search by object type.
         Valid <value> strings for this type include: 'pin', 'via', 'rect', 'arc', 'line', 'poly', 

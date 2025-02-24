@@ -40,6 +40,7 @@ Examples：
 import os,sys,re
 import shutil
 import time
+from collections import Counter
 
 from .desktop import initializeDesktop,releaseDesktop
 
@@ -328,6 +329,7 @@ class Layout(object):
                  
                 if not self._oProject:
                     self._oProject = oDesktop.GetProjects()[0]
+                    oDesktop.SetActiveProject(self._oProject.GetName())
                  
         if not self._oProject:
             log.error("Must have one project opened in aedt.")
@@ -387,10 +389,20 @@ class Layout(object):
                     raise Exception("design not in project.%s"%designName)
                 self._oDesign = self._oProject.SetActiveDesign(designName)
             else:
-                self._oDesign = self._oProject.GetActiveDesign()
+                
+                #update for 2025.1
+                try:
+                    self._oDesign = self._oProject.GetActiveDesign()
+                except:
+                    log.info("GetActiveDesign error.")
+#                     log.info("try to get the first design")
+#                     self._oDesign = self._oProject.SetActiveDesign(designList[0])
+                
+                #for 2024.2 GetActiveDesign() may return None
                 if not self._oDesign:
                     log.info("try to get the first design")
                     self._oDesign = self._oProject.SetActiveDesign(designList[0])
+                    
                     
                 #make sure the design is 3DL
                 designtype = self._oDesign.GetDesignType()
@@ -450,7 +462,7 @@ class Layout(object):
         #for collections
         info.update("Objects", Objects3DL(layout = self,types=".*"))
         info.update("Traces", Objects3DL(layout = self,types=['arc', 'line']))
-        info.update("Shapes", Objects3DL(layout = self,types=[ 'rect','poly','plg']))
+        info.update("Shapes", Objects3DL(layout = self,types=[ 'rect','poly','plg','circle']))
         info.update("Voids", Objects3DL(layout = self,types=['circle void', 'line void', 'rect void', 'poly void', 'plg void']))
         
         
@@ -465,7 +477,7 @@ class Layout(object):
         info.update("ModelDefs", ModelDefs(layout = self))
         
 #         info.update("Primitives",Primitives(layout = self))
-        info.update("unit",self.oEditor.GetActiveUnits())
+        info.update("unit",self.getUnit2())  #some bug exit in oEditor.GetActiveUnits()
         info.update("Version",self.oDesktop.GetVersion())
         info.update("layout",self)
         
@@ -669,8 +681,34 @@ class Layout(object):
         #return old unit
         return self.oEditor.SetActiveUnits(unit)
     
-    def getUnit(self):
+    
+    def getUnit2(self):
+        
+        #get via most unit 
+        objs = self.oEditor.FindObjects('Type', "via")
+        if len(objs)>5:
+            lst = [re.sub(r"[\d\.]*","",self.oEditor.GetPropertyValue("BaseElementTab",obj,"Top Offset")) for obj in objs[:5]]
+            count = Counter(lst)
+            most_common = count.most_common(1)
+            unit = most_common[0][0]
+            return unit
+        
+        #get line most unit  LineWidth
+        objs = self.oEditor.FindObjects('Type', "line")
+        if len(objs)>5:
+            lst = [re.sub(r"[\d\.]*","",self.oEditor.GetPropertyValue("BaseElementTab",obj,"LineWidth")) for obj in objs[:5]]
+            count = Counter(lst)
+            most_common = count.most_common(1)
+            unit = most_common[0][0]
+            return unit
+            
+        #have bug in 2024R2
         return self.oEditor.GetActiveUnits()
+    
+    def getUnit(self):
+        #have bug in 2024R2
+        return self.oEditor.GetActiveUnits()
+    
     
     def select(self,objs):
         '''
@@ -706,7 +744,186 @@ class Layout(object):
 
     
     #---functions
+    
+    #---Create objects
+#     def addCircle(self,layer,location,r,name=None):
+#         lay = self.Layers[layer].Name
+#         loc = Point(location)
+#         ra = str(r)
+#         if not name:
+#             name = self.Circles.getUniqueName("circle_")
+#         log.info("Create Circle: %s"%name)
+#         name = self.oEditor.addCircle(
+#             [
+#                 "NAME:Contents",
+#                 "circleGeometry:="    , ["Name:=", name ,"LayerName:=", lay,"lw:=", "0","x:=", loc.x ,"y:=", loc.y ,"r:=",ra]
+#             ])
+#         
+#         self.Circles.push(name)
+#         self.Shapes.push(name)
+#         
+#         return name
+    
+    
+    def addCircle(self,layer,location,r,name=None):
+        lay = self.Layers[layer].Name
+        loc = Point(location)
+        ra = str(r)
+        if not name:
+            name = self.Circles.getUniqueName("circle_")
+        log.info("Create Circle: %s"%name)
+        name = self.oEditor.addCircle(
+            [
+                "NAME:Contents",
+                "circleGeometry:="    , ["Name:=", name ,"LayerName:=", lay,"lw:=", "0","x:=",0 ,"y:=", 0 ,"r:=", "1um"]
+            ])
+        
+        self.Circles.push(name)
 
+        self.Circles[name].Center = location #"%s,%s"%(loc.x,loc.y)
+        self.Circles[name].Radius = ra
+        return self.Circles[name]
+    
+    def addLine(self,layerName,points,width="0.1mm",name=None):
+        '''
+        points:list,tuple, Point
+        '''
+        if not points or len(points)<2:
+            log.exception("Points of line must have 2 points")
+            
+#         if not name:
+#             name = self.getUniqueName()
+            
+        pts = [Point(p) for p in points]
+        pUnit = self.layout.unit
+        
+        xyListTemp = []
+        for i in range(len(pts)):
+            xyListTemp.append("x:=")
+            xyListTemp.append(0)
+            xyListTemp.append("y:=")
+            xyListTemp.append(0)
+        
+        if not name:
+            name = self.Circles.getUniqueName("line_")
+        log.info("Create Line: %s"%name)
+        name = self.layout.oEditor.addLine(
+            [
+                "NAME:Contents",
+                "lineGeometry:=", 
+                ["Name:=", name, 
+                "LayerName:=", self.layout.layers.getRealLayername(layerName),
+                "lw:=", width,
+                "endstyle:=", 0,
+                "StartCap:=", 0,
+                "n:=", len(xyListTemp),
+                "U:=", pUnit] + xyListTemp
+#                 "x:=", 17,"y:=", 28,
+#                 "MR:=", "600mm"]
+            ])
+        
+        self.Lines.push(name)
+        for i in range(len(pts)):
+            self.Lines[name]["Pt%s"%i] = pts[i]
+            
+        return self.Lines[name]
+    
+    def addRectangle(self,layerName,ptA,ptB,name=None):
+        if not name:
+            name = self.Circles.getUniqueName("rect_")
+        log.info("Create Rectangle: %s"%name)
+        name = self.layout.oEditor.CreateRectangle(
+            [
+                "NAME:Contents",
+                "rectGeometry:="    , 
+                ["Name:=", "rect_0",
+                 "LayerName:=", self.layout.Layers[layerName].Name,
+                 "lw:=", "0",
+                 "Ax:=", "0mm","Ay:=", "0mm",
+                 "Bx:=", "0.1mm","By:=", "0.1mm",
+                 "cr:=", "0mm","ang:=", "0deg"]
+            ])
+        
+        self.rects.push(name)
+        self.Rects[name].PtA = ptA 
+        self.Rects[name].PtB = ptB
+        return self.Rects[name]
+    
+    def addpolygon(self,layerName,points,name=None):
+        '''
+        points:list,tuple, Point
+        '''
+        if not points or len(points)<3:
+            log.exception("Points of polygon must have 3 points")
+            
+#         if not name:
+#             name = self.getUniqueName()
+            
+        pts = [Point(p) for p in points]
+        xyListTemp = []
+        for i in range(len(pts)):
+            xyListTemp.append("x:=")
+            xyListTemp.append(0)
+            xyListTemp.append("y:=")
+            xyListTemp.append(0)
+        if not name:
+            name = self.Circles.getUniqueName("poly_")
+        log.info("Create poly: %s"%name)
+        
+        name = self.layout.oEditor.CreatePolygon(
+        [
+            "NAME:Contents",
+            "polyGeometry:=", 
+            ["Name:=", "poly_0",     
+            "LayerName:=", self.layout.Layers[layerName].Name,
+            "lw:=", "0","n:=", 6,
+            "U:=", self.layout.unit]  + xyListTemp
+    #         "x:=", -1,"y:=", -25,"x:=", -11,"y:=", -41,"x:=", -4,"y:=", -49,"x:=", 37,"y:=", -50,"x:=", 24,"y:=", -21,"x:=", 11,"y:=", -29,"x:=", -1,"y:=", -25]
+        ])
+        
+        self.Polys.push(name)
+        for i in range(len(pts)):
+            self.Polys[name]["Pt%s"%i] = pts[i]
+            
+        return self.Polys[name]
+    
+    def addVia(self,position,padStack,hole="0mm",upperLayer=None,lowerLayer=None,isPin = False,name=None):
+        
+        if not name:
+            name = self.Circles.getUniqueName("poly_")
+        log.info("Create Via: %s"%name)
+        
+        if len(position)!=2:
+            log.exception("Center must have length 2")
+            
+        if not lowerLayer:
+            lowerLayer = upperLayer
+        
+        pos = Point(position)
+        self.oEditor.CreateVia(
+            [
+                "NAME:Contents",
+                "name:="        , name,
+                "ReferencedPadstack:="    , padStack,
+                "vposition:="        , ["x:=", "0mm","y:=", "0mm"],
+                "vrotation:="        , ["0deg"],
+                "overrides hole:="    , False,
+                "hole diameter:="    , ["0.1mm"],
+                "Pin:="            , isPin,
+                "highest_layer:="    , upperLayer,
+                "lowest_layer:="    , lowerLayer
+            ])
+        
+        if isPin:
+            self.Pins.push(name)
+            self.Pins[name].Location = Point(position)
+            self.Pins[name].HoleDiameter = hole
+            return self.Pins[name]
+        else:
+            self.Vias.push(name)
+            self.Vias[name].Location = Point(position)
+            self.Vias[name].HoleDiameter = hole
+            return self.Vias[name]
     
     #--- IO
     

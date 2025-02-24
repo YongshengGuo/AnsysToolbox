@@ -9,6 +9,12 @@ import re
 import time
 isIronpython = "IronPython" in sys.version
 
+appPath = os.path.realpath(__file__)
+appDir = os.path.split(appPath)[0] 
+sys.path.append(appDir)
+sys.path.append(os.path.join(appDir,r"..\site-packages"))
+
+
 try:
     import clr
 except:

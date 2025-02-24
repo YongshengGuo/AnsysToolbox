@@ -102,6 +102,10 @@ class Port(Primitive):
             return
             
         ConnectionPoints = self.ConnectionPoints #0.000400 0.073049 Dir:270.000000 Layer: BOTTOM    
+        if not ConnectionPoints or ConnectionPoints=='NONE':
+            log.info("Port %s not a 3DL port, skip."%self.Name)
+            return 
+        
         splits = ConnectionPoints.split() #['0.000400', '0.073049', 'Dir:270.000000', 'Layer:', 'BOTTOM']
         X = float(splits[0])
         Y = float(splits[1])

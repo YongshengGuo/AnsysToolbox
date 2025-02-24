@@ -21,6 +21,8 @@
 	</SubMenu>
 	<SubMenu Name="Via" DesignType="3DLayout">
 		<SubMenu Type="MenuItem" Name="autoBackdrill" ExecuteType="IronPython" Path="$UserLib/3DLayout/Via/autoBackdrill.py" Arguments ="" PythonPath=""></SubMenu>
+		<SubMenu Type="MenuItem" Name="keepHDIViaPad" ExecuteType="Python" Path="$UserLib/3DLayout/Via/keepHDIViaPad.py" Arguments ="" PythonPath=""></SubMenu>
+
 	</SubMenu>
 	<SubMenu Name="Port" DesignType="3DLayout">
 		<SubMenu Type="MenuItem" Name="RenameEdgePort" ExecuteType="Python" Path="$UserLib/3DLayout/Port/nameEdgePort.py" Arguments ="" PythonPath=""></SubMenu>

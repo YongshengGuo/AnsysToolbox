@@ -76,37 +76,40 @@ class PadStack(Definition):
         self.update()
         
 
-    def place(self,center,layerUpper,layerLower = None,isPin = False):
+    def place(self,position,upperLayer,lowerLayer,isPin = False):
         '''
         Center: [x,y], str value
         #Return Value: Returns the name of the created via
         '''
-        if len(center)!=2:
-            log.exception("Center must have length 2")
-            
-        if not layerLower:
-            layerLower = layerUpper
         
-        name = self.layout.oEditor.CreateVia(
-            [
-                "NAME:Contents",
-#                 "name:="        , "pad_0000",
-                "ReferencedPadstack:="    , self.Name,
-                "vposition:="        , ["x:=", center[0],"y:=",center[1]],
-                "vrotation:="        , ["0deg"],
-                "overrides hole:="    , False,
-                "hole diameter:="    , ["1mm"],
-                "Pin:="            , isPin,
-                "highest_layer:="    , layerUpper,
-                "lowest_layer:="    , layerLower
-            ])
+        self.layout.addVia(self,position,upperLayer,lowerLayer,isPin)
         
-        if isPin:
-            self.layout.Pins.push(name)
-        else:
-            self.layout.Vias.push(name)
-        
-        return name
+#         if len(center)!=2:
+#             log.exception("Center must have length 2")
+#             
+#         if not layerLower:
+#             layerLower = layerUpper
+#         
+#         name = self.layout.oEditor.CreateVia(
+#             [
+#                 "NAME:Contents",
+# #                 "name:="        , "pad_0000",
+#                 "ReferencedPadstack:="    , self.Name,
+#                 "vposition:="        , ["x:=", center[0],"y:=",center[1]],
+#                 "vrotation:="        , ["0deg"],
+#                 "overrides hole:="    , False,
+#                 "hole diameter:="    , ["0mm"],
+#                 "Pin:="            , isPin,
+#                 "highest_layer:="    , layerUpper,
+#                 "lowest_layer:="    , layerLower
+#             ])
+#         
+#         if isPin:
+#             self.layout.Pins.push(name)
+#         else:
+#             self.layout.Vias.push(name)
+#         
+#         return name
 
 class PadStacks(Definitions):
     
@@ -114,10 +117,12 @@ class PadStacks(Definitions):
         super(self.__class__,self).__init__(layout, type="Padstack",definitionCalss=PadStack)
 
      
-    def add(self,name):
+    def add(self,name,padSize="16mil",dirll="8mil"):
         oDefinitionManager = self.layout.oProject.GetDefinitionManager()
         oPadstackManager = oDefinitionManager.GetManager("Padstack")
         oPadstackManager.Add(["NAME:%s"%name])
         self.DefinitionDict[name].appendSignalLayers() #添加默认padstack叠层信息
         self.push(name)
+        
+        
         

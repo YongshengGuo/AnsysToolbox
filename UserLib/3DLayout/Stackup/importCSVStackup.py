@@ -29,22 +29,30 @@ except:
 from pyLayout import Layout
 # pyLayout.log.setLogLevel(logLevel="DEBUG")
 
-def openFile(fileFilter = "All files(*.*)|*.*"):
+def openFile(fileFilter = "All files(*.*)|*.*", initialDirectory=None):
     fd = OpenFileDialog()
     fd.Filter = fileFilter 
-    fd.RestoreDirectory = True
+    # fd.RestoreDirectory = True
+    if initialDirectory:
+        fd.InitialDirectory = initialDirectory
+        
     if fd.ShowDialog() == DialogResult.OK:
         return str(fd.FileName)
     else:
         return ""
 
 def main():
-    csvPath = openFile("(*.csv)|*.csv|All files(*.*)|*.*")
-    if not csvPath:
-        return
-    layout = Layout("2023.2")
+    # csvPath = openFile("(*.csv)|*.csv|All files(*.*)|*.*")
+    # if not csvPath:
+    #     return
+    layout = Layout()
 #     layout = Layout()
     layout.initDesign()
+    
+    csvPath = openFile("(*.csv)|*.csv|All files(*.*)|*.*",layout.projectDir)
+    if not csvPath:
+        return
+    
     layout.Layers.loadFromCSV(csvPath)
 
 if __name__ == '__main__':

@@ -33,6 +33,10 @@ def export2HFSS():
     if not setupHFSS: 
         setupHFSS = layout.Setups.add("HFSS")
         setupHFSS.Order = "First"
+        setupHFSS.DeltaS = 0.02
+        setupHFSS.MaxPasses = 20
+        setupHFSS.AdaptiveFrequency = "10Ghz"
+        setupHFSS.PortMaxDeltaZo = 0.1
         
     setupHFSS.exportToHfss()
     print("finished!")
@@ -47,7 +51,6 @@ def export2Q3D():
             break
     if not setupHFSS: 
         setupHFSS = layout.Setups.add("HFSS")
-        setupHFSS.Order = "First"
         
     setupHFSS.exportToQ3D()
     print("finished!")
@@ -62,7 +65,6 @@ def export2Maxwell():
             break
     if not setupHFSS: 
         setupHFSS = layout.Setups.add("HFSS")
-        setupHFSS.Order = "First"
         
     setupHFSS.exportToMaxwell()
     print("finished!")
